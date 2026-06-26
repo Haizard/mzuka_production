@@ -161,8 +161,8 @@ Required work:
 - [x] Admin login
 - [x] User roles: founder, admin, staff, client
 - [x] Admin approval before client access
-- [ ] Appointment booking flow
-- [ ] Service/package selection
+- [x] Appointment booking flow
+- [x] Service/package selection
 - [ ] Booking status management
 - [ ] Email reminder foundation
 - [ ] SMS reminder foundation
@@ -340,7 +340,7 @@ As of 2026-06-26:
 - [x] Backend exists
 - [x] Database schema exists
 - [x] Auth exists
-- [ ] Booking flow exists
+- [x] Booking flow exists
 - [x] Admin dashboard exists
 - [ ] Gallery system exists
 - [ ] Payment system exists
@@ -462,6 +462,49 @@ Blockers/notes:
 - Auth pages are implemented, but they cannot be tested end-to-end until the database migration is applied.
 - Booking, gallery upload, Stripe unlock, AWS S3, notifications, and AI scoring are not implemented yet.
 
+### 2026-06-26 - Phase 1 booking flow implementation
+
+Agent: GitHub Copilot
+
+Work completed:
+
+- Created `BookingForm` component in `/src/components/booking-form.tsx` with service type, package selection, event title, location, date/time, and notes fields using React Hook Form and Zod validation.
+- Created client booking server actions in `/src/app/client/actions.ts`:
+  - `createBookingAction()` to create new bookings with client ownership verification
+  - `getClientBookings()` to list client's bookings with related data
+  - `getBookingById()` to fetch individual booking details with ownership check
+- Created client booking pages:
+  - `/client/bookings/new` - Form to create new booking requests
+  - `/client/bookings` - List view of client's bookings with status filters and quick info
+  - `/client/bookings/[id]` - Detail view with event info, status, payment summary, and gallery preview
+- Created admin booking management in `/src/app/admin/bookings/`:
+  - Server actions for fetching all bookings, updating status, and getting booking statistics
+  - Client component for admins to view all bookings with filters and inline status updates
+  - Expandable rows showing client contact, service details, and action dropdowns
+- Created admin service packages management in `/src/app/admin/packages/`:
+  - Server actions for CRUD operations on `ServicePackage` model
+  - Full-featured client component with create/edit/delete forms and package listing
+- Added `postinstall` script to package.json to auto-generate Prisma client after dependencies install
+- Fixed TypeScript imports and type mismatches throughout implementation
+- Marked dynamic routes with `export const dynamic = "force-dynamic"` to prevent static generation errors
+
+Commands/checks:
+
+- `npm run build` passed with all routes successfully generating
+- All new routes properly typed and validated:
+  - ○ /admin/bookings (static)
+  - ○ /admin/packages (static)
+  - ƒ /client/bookings (dynamic)
+  - ƒ /client/bookings/[id] (dynamic)
+  - ƒ /client/bookings/new (dynamic)
+
+Blockers/notes:
+
+- Supabase database connection was unreachable during development (network/firewall issue). Prisma migration not yet run, so database tables not created.
+- Booking status management UI implemented but backend persistence not tested without live database.
+- Email/SMS reminders, Stripe payment integration, and gallery system still need implementation.
+- Next steps: Connect Supabase database, run Prisma migration, then implement gallery creation and Stripe payment flow.
+
 ## 12. Immediate Next Step
 
-Continue Phase 1 by connecting a real PostgreSQL database, running the first Prisma migration, then implementing appointment booking and service/package selection.
+Connect Supabase PostgreSQL database, run `npx prisma migrate dev --name init`, then implement gallery creation and Stripe payment integration.
