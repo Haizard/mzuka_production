@@ -164,8 +164,8 @@ Required work:
 - [x] Appointment booking flow
 - [x] Service/package selection
 - [x] Booking status management
-- [ ] Email reminder foundation
-- [ ] SMS reminder foundation
+- [x] Email reminder foundation
+- [x] SMS reminder foundation
 - [x] Admin dashboard overview
 - [x] Client management
 - [x] Gallery creation
@@ -174,8 +174,8 @@ Required work:
 - [x] Preview-only gallery before payment
 - [x] No download before payment
 - [x] No share before payment
-- [ ] Stripe checkout
-- [ ] Payment webhook
+- [x] Stripe checkout
+- [x] Payment webhook
 - [x] Full-quality download unlock after payment
 - [x] Gallery expiration
 - [x] Access logs
@@ -346,7 +346,7 @@ As of 2026-06-26:
 - [x] Payment system exists (Stripe integration complete)
 - [ ] AI scoring exists
 - [x] AWS storage integration exists (signed URLs)
-- [ ] Notification system exists
+- [x] Notification system exists (Email/SMS reminders)
 - [ ] Tests exist
 - [ ] Deployment config exists
 
@@ -623,7 +623,81 @@ Blockers/notes:
 
 ## 12. Immediate Next Step
 
-Configure Stripe API keys, test full payment flow, then implement email/SMS booking reminders.
+Set up external cron job for `/api/cron/process-reminders`, configure API keys, test full workflow (booking → reminders → payment → gallery), then implement AI photo scoring.
 
 ## 13. Agent Work Log - Full History
 
+### 2026-06-26 - Email/SMS booking reminders implementation
+
+Agent: GitHub Copilot
+
+Work completed:
+
+- Installed Resend (email) and Twilio (SMS) packages with node-cron for scheduling
+- Created reminder server actions in `/src/app/admin/reminders/actions.ts`:
+  - `scheduleReminderAction()` - Schedule individual reminders (email or SMS)
+  - `getBookingReminders()` - Fetch all reminders for a booking
+  - `deleteReminderAction()` - Cancel scheduled reminders
+  - `sendReminderAction()` - Manually trigger reminder sending
+- Created email template with luxury branding:
+  - Dark theme with gold accents matching [MG] brand
+  - Event details (date, time, location, package)
+  - Professional HTML structure with responsive design
+- Created SMS template:
+  - Concise 160-character message with key details
+  - Includes date, time, service type, and [MG] branding
+- Created reminder utilities in `/src/lib/reminders.ts`:
+  - `scheduleDefaultReminders()` - Auto-schedule reminders at 7 days, 1 day, 30 minutes before event
+  - `getPendingReminders()` - Fetch unsent reminders ready to send
+  - `cleanupOldReminders()` - Delete sent reminders older than 30 days
+- Integrated automatic reminder scheduling into booking creation:
+  - When client creates booking, 3 reminders automatically scheduled
+  - Email preferred for 7-day and 30-minute reminders
+  - SMS preferred for 1-day reminder if phone number available
+- Created reminder processing API endpoint at `/api/cron/process-reminders`:
+  - Secured with Bearer token verification
+  - Processes up to 50 pending reminders per call
+  - Can be triggered by external cron service (Vercel Cron, AWS EventBridge, etc.)
+  - Returns summary of successful/failed sends
+  - Automatically cleans up old sent reminders
+- Created BookingReminders component in `/src/components/booking-reminders.tsx`:
+  - Admin interface to view, create, and delete reminders
+  - Shows scheduled time, channel (email/SMS), and sent status
+  - Form to schedule custom reminders at specific times
+  - Prevents scheduling in the past
+- Created admin booking detail page at `/src/app/admin/bookings/[id]/page.tsx`:
+  - Complete booking overview with all details
+  - Client contact information
+  - Payment summary and history
+  - Gallery information
+  - BookingReminders component embedded
+  - Link from admin bookings list for quick access
+- Updated admin bookings list to link to detail page instead of client view
+- Fixed Twilio initialization to be lazy-loaded (prevents build errors when credentials not configured)
+- Added types for all reminder operations
+
+Commands/checks:
+
+- `npm install resend twilio node-cron` - Added notification packages
+- `npm run build` - All 19 routes successfully compiling:
+  - ✓ /admin/bookings/[id] (new admin detail page)
+  - ✓ /api/cron/process-reminders (new cron endpoint)
+  - ✓ All previous routes still working
+- Full TypeScript validation passed
+
+Required environment variables for production:
+
+- `RESEND_API_KEY` - Resend email API key (from Resend dashboard)
+- `RESEND_FROM_EMAIL` - Email address to send from (default: noreply@muzuka.com)
+- `TWILIO_ACCOUNT_SID` - Twilio account SID (from Twilio dashboard)
+- `TWILIO_AUTH_TOKEN` - Twilio auth token (from Twilio dashboard)
+- `TWILIO_PHONE_NUMBER` - Twilio phone number to send SMS from (format: +1234567890)
+- `CRON_SECRET` - Bearer token for cron endpoint authorization
+
+Blockers/notes:
+
+- Reminder emails and SMS won't actually send without proper credentials configured
+- Cron endpoint requires external service to call it (Vercel Cron, EasyCron, AWS EventBridge, etc.)
+- Recommended: Set up Vercel Cron to call `/api/cron/process-reminders` every 5 minutes
+- Email templates use Resend which has free tier (100/day) - sufficient for MVP
+- SMS requires Twilio paid account - verify costs before enabling for all bookings

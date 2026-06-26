@@ -256,10 +256,10 @@ export default function AdminBookingsPage() {
                           )}
 
                           <Link
-                            href={`/client/bookings/${booking.id}`}
+                            href={`/admin/bookings/${booking.id}`}
                             className="rounded-lg bg-blue-600 hover:bg-blue-700 px-3 py-1 text-sm text-white transition"
                           >
-                            View Details
+                            Full Details
                           </Link>
                         </div>
                       </div>

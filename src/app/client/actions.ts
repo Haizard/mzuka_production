@@ -4,6 +4,7 @@ import { requireApprovedUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { redirect } from "next/navigation";
 import Stripe from "stripe";
+import { scheduleDefaultReminders } from "@/lib/reminders";
 
 interface CreateBookingInput {
   serviceType: string;
@@ -68,6 +69,15 @@ export async function createBookingAction(input: CreateBookingInput) {
         },
       },
     });
+
+    // Schedule default reminders (7 days, 1 day, 30 minutes before)
+    await scheduleDefaultReminders(
+      booking.id,
+      user.id,
+      scheduledDate,
+      user.email,
+      user.phone || undefined
+    );
 
     return {
       success: true,
