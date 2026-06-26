@@ -31,7 +31,11 @@ export async function getAllBookings(input: GetAllBookingsInput = {}) {
             },
           },
           package: true,
-          gallery: true,
+          gallery: {
+            select: {
+              id: true,
+            },
+          },
         },
         orderBy: { createdAt: "desc" },
         take: input.limit || 50,

@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { ChevronDown, Calendar, DollarSign, User } from "lucide-react";
 import { getAllBookings, getBookingStats, updateBookingStatusAction } from "./actions";
+import { CreateGalleryForm } from "@/components/create-gallery-form";
 
 interface BookingWithClient {
   id: string;
@@ -21,6 +22,9 @@ interface BookingWithClient {
   package: {
     name: string;
     priceCents: number;
+  } | null;
+  gallery?: {
+    id: string;
   } | null;
 }
 
@@ -235,6 +239,21 @@ export default function AdminBookingsPage() {
                             <option value="COMPLETED">Complete</option>
                             <option value="CANCELLED">Cancel</option>
                           </select>
+
+                          {booking.gallery ? (
+                            <Link
+                              href={`/admin/galleries`}
+                              className="rounded-lg bg-purple-600 hover:bg-purple-700 px-3 py-1 text-sm text-white transition"
+                            >
+                              View Gallery
+                            </Link>
+                          ) : (
+                            <CreateGalleryForm
+                              bookingId={booking.id}
+                              bookingTitle={booking.title}
+                              onSuccess={loadData}
+                            />
+                          )}
 
                           <Link
                             href={`/client/bookings/${booking.id}`}
