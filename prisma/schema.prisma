@@ -1,0 +1,245 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum UserRole {
+  FOUNDER
+  ADMIN
+  STAFF
+  CLIENT
+}
+
+enum ApprovalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  SUSPENDED
+}
+
+enum BookingStatus {
+  REQUESTED
+  CONFIRMED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum PaymentStatus {
+  UNPAID
+  DEPOSIT_PAID
+  PAID
+  REFUNDED
+  FAILED
+}
+
+enum MediaKind {
+  PHOTO
+  VIDEO
+}
+
+enum MediaReleaseStatus {
+  DRAFT
+  REVIEWED
+  RELEASED
+  HIDDEN
+}
+
+enum AuditAction {
+  LOGIN
+  CLIENT_APPROVED
+  BOOKING_CREATED
+  BOOKING_UPDATED
+  GALLERY_VIEWED
+  MEDIA_UPLOADED
+  MEDIA_RELEASED
+  PAYMENT_RECEIVED
+  DOWNLOAD_UNLOCKED
+  FILE_DOWNLOADED
+  ACCESS_REVOKED
+}
+
+model User {
+  id              String           @id @default(cuid())
+  name            String
+  email           String           @unique
+  phone           String?
+  passwordHash    String?
+  role            UserRole         @default(CLIENT)
+  approvalStatus  ApprovalStatus   @default(PENDING)
+  emailVerifiedAt DateTime?
+  phoneVerifiedAt DateTime?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  bookings        Booking[]        @relation("ClientBookings")
+  approvedClients ClientApproval[] @relation("ApprovedBy")
+  approvals       ClientApproval[] @relation("ClientApproval")
+  auditLogs       AuditLog[]
+  messages        Message[]
+}
+
+model ClientApproval {
+  id         String         @id @default(cuid())
+  clientId   String
+  approverId String?
+  status     ApprovalStatus @default(PENDING)
+  notes      String?
+  decidedAt  DateTime?
+  createdAt  DateTime       @default(now())
+  approver   User?          @relation("ApprovedBy", fields: [approverId], references: [id])
+  client     User           @relation("ClientApproval", fields: [clientId], references: [id])
+}
+
+model ServicePackage {
+  id          String    @id @default(cuid())
+  name        String
+  description String
+  priceCents  Int
+  currency    String    @default("USD")
+  durationMin Int?
+  isActive    Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  bookings    Booking[]
+}
+
+model Booking {
+  id            String        @id @default(cuid())
+  clientId      String
+  packageId     String?
+  title         String
+  serviceType   String
+  location      String?
+  scheduledAt   DateTime
+  status        BookingStatus @default(REQUESTED)
+  paymentStatus PaymentStatus @default(UNPAID)
+  notes         String?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  client        User          @relation("ClientBookings", fields: [clientId], references: [id])
+  package       ServicePackage? @relation(fields: [packageId], references: [id])
+  gallery       Gallery?
+  payments      Payment[]
+  reminders     BookingReminder[]
+}
+
+model BookingReminder {
+  id          String    @id @default(cuid())
+  bookingId   String
+  channel     String
+  scheduledAt DateTime
+  sentAt      DateTime?
+  createdAt   DateTime  @default(now())
+  booking     Booking   @relation(fields: [bookingId], references: [id])
+}
+
+model Gallery {
+  id              String    @id @default(cuid())
+  bookingId       String    @unique
+  title           String
+  slug            String    @unique
+  expiresAt       DateTime?
+  isDownloadOpen  Boolean   @default(false)
+  isShareOpen     Boolean   @default(false)
+  watermarkText   String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  booking         Booking   @relation(fields: [bookingId], references: [id])
+  mediaAssets     MediaAsset[]
+  accessLogs      AccessLog[]
+}
+
+model MediaAsset {
+  id             String             @id @default(cuid())
+  galleryId      String
+  kind           MediaKind
+  originalKey    String
+  previewKey     String?
+  filename       String
+  mimeType       String
+  sizeBytes      BigInt?
+  width          Int?
+  height         Int?
+  releaseStatus  MediaReleaseStatus @default(DRAFT)
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+  gallery        Gallery            @relation(fields: [galleryId], references: [id])
+  aiAnalysis     AiAnalysis?
+  downloads      Download[]
+}
+
+model AiAnalysis {
+  id           String     @id @default(cuid())
+  mediaAssetId String     @unique
+  sharpness    Int
+  lighting     Int
+  faceQuality  Int?
+  composition  Int
+  colorGrade   Int
+  background   Int
+  emotion      Int?
+  overallScore Int
+  notes        String?
+  createdAt    DateTime   @default(now())
+  mediaAsset   MediaAsset @relation(fields: [mediaAssetId], references: [id])
+}
+
+model Payment {
+  id                    String        @id @default(cuid())
+  bookingId             String
+  stripeCheckoutSession String?       @unique
+  stripePaymentIntent   String?       @unique
+  amountCents           Int
+  currency              String        @default("USD")
+  status                PaymentStatus @default(UNPAID)
+  createdAt             DateTime      @default(now())
+  updatedAt             DateTime      @updatedAt
+  booking               Booking       @relation(fields: [bookingId], references: [id])
+}
+
+model AccessLog {
+  id         String   @id @default(cuid())
+  galleryId  String
+  userId     String?
+  ipAddress  String?
+  userAgent  String?
+  deviceHash String?
+  action     String
+  createdAt  DateTime @default(now())
+  gallery    Gallery  @relation(fields: [galleryId], references: [id])
+}
+
+model Download {
+  id           String     @id @default(cuid())
+  mediaAssetId String
+  userId       String?
+  ipAddress    String?
+  createdAt    DateTime   @default(now())
+  mediaAsset   MediaAsset @relation(fields: [mediaAssetId], references: [id])
+}
+
+model Message {
+  id        String   @id @default(cuid())
+  userId    String
+  subject   String
+  body      String
+  channel   String
+  sentAt    DateTime?
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id])
+}
+
+model AuditLog {
+  id        String      @id @default(cuid())
+  actorId   String?
+  action    AuditAction
+  entity    String?
+  entityId  String?
+  metadata  Json?
+  ipAddress String?
+  createdAt DateTime    @default(now())
+  actor     User?       @relation(fields: [actorId], references: [id])
+}

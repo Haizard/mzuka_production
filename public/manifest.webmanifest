@@ -1,0 +1,11 @@
+{
+  "name": "Muzuka Gilbert",
+  "short_name": "MG",
+  "description": "Luxury booking and protected-gallery platform for Muzuka Gilbert.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#050505",
+  "theme_color": "#d4af37",
+  "orientation": "portrait-primary",
+  "icons": []
+}
