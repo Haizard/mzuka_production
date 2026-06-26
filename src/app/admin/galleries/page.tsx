@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Upload, Loader2, Check, X } from "lucide-react";
 import { uploadMediaAssetAction, getAdminGalleries, releaseMediaAssetsAction } from "./actions";
 
@@ -22,7 +22,9 @@ interface BookingWithGallery {
     title: string;
     mediaAssets: MediaAsset[];
   };
-  payments: any[];
+  payments: {
+    status: string;
+  }[];
 }
 
 interface Gallery {
@@ -40,17 +42,18 @@ export default function AdminGalleriesPage() {
   const [uploadingId, setUploadingId] = useState<string | null>(null);
   const [releaseLoading, setReleaseLoading] = useState<string | null>(null);
 
-  useEffect(() => {
-    loadGalleries();
-  }, []);
-
-  const loadGalleries = async () => {
+  const loadGalleries = useCallback(async () => {
     const result = await getAdminGalleries();
     if (result.success) {
       setGalleries(result.galleries);
     }
     setIsLoading(false);
-  };
+  }, []);
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    loadGalleries();
+  }, [loadGalleries]);
 
   const handleFileUpload = async (
     e: React.ChangeEvent<HTMLInputElement>,

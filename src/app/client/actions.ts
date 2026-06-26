@@ -2,7 +2,6 @@
 
 import { requireApprovedUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
-import { redirect } from "next/navigation";
 import Stripe from "stripe";
 import { scheduleDefaultReminders } from "@/lib/reminders";
 
@@ -215,7 +214,7 @@ export async function createCheckoutSessionAction(bookingId: string) {
     }
 
     // Create or get existing checkout session
-    let existingPayment = booking.payments.find(
+    const existingPayment = booking.payments.find(
       (p) => p.stripeCheckoutSession && p.status === "UNPAID"
     );
 
@@ -245,6 +244,11 @@ export async function createCheckoutSessionAction(bookingId: string) {
       },
     });
 
+    const baseUrl =
+      process.env.NEXT_PUBLIC_BASE_URL ??
+      process.env.NEXT_PUBLIC_APP_URL ??
+      "http://localhost:3000";
+
     // Create Stripe checkout session
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ["card"],
@@ -262,8 +266,8 @@ export async function createCheckoutSessionAction(bookingId: string) {
         },
       ],
       mode: "payment",
-      success_url: `${process.env.NEXT_PUBLIC_BASE_URL}/client/bookings/${bookingId}?payment_success=true`,
-      cancel_url: `${process.env.NEXT_PUBLIC_BASE_URL}/client/bookings/${bookingId}`,
+      success_url: `${baseUrl}/client/bookings/${bookingId}?payment_success=true`,
+      cancel_url: `${baseUrl}/client/bookings/${bookingId}`,
       customer_email: user.email,
       metadata: {
         bookingId,

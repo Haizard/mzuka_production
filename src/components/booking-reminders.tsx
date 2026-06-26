@@ -10,12 +10,19 @@ interface BookingRemindersProps {
   clientPhone?: string;
 }
 
+interface Reminder {
+  id: string;
+  channel: string;
+  scheduledAt: Date | string;
+  sentAt: Date | string | null;
+}
+
 export function BookingReminders({
   bookingId,
   clientEmail,
   clientPhone,
 }: BookingRemindersProps) {
-  const [reminders, setReminders] = useState<any[]>([]);
+  const [reminders, setReminders] = useState<Reminder[]>([]);
   const [loading, setLoading] = useState(false);
   const [channel, setChannel] = useState<"email" | "sms">("email");
   const [scheduledAt, setScheduledAt] = useState("");
@@ -93,7 +100,10 @@ export function BookingReminders({
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-2">
           <Bell className="h-5 w-5 text-[var(--gold)]" />
-          <h3 className="font-semibold text-white">Booking Reminders</h3>
+          <div>
+            <h3 className="font-semibold text-white">Booking Reminders</h3>
+            <p className="text-xs text-zinc-500">{clientEmail}</p>
+          </div>
         </div>
         <button
           onClick={loadReminders}

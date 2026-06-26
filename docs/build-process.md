@@ -701,3 +701,29 @@ Blockers/notes:
 - Recommended: Set up Vercel Cron to call `/api/cron/process-reminders` every 5 minutes
 - Email templates use Resend which has free tier (100/day) - sufficient for MVP
 - SMS requires Twilio paid account - verify costs before enabling for all bookings
+
+### 2026-06-27 - Phase 1 cleanup and validation
+
+Agent: Codex
+
+Work completed:
+
+- Fixed TypeScript ESLint errors in booking, gallery, package, reminder, and checkout code.
+- Replaced loose `any` usage with generated Prisma enum/types or local interfaces.
+- Fixed React hook ordering issues in admin client pages.
+- Removed unused imports and variables from admin/client route files.
+- Replaced Twilio `require()` usage with typed module import.
+- Added fallback support for both `TWILIO_PHONE_NUMBER` and `TWILIO_FROM_NUMBER`.
+- Added `NEXT_PUBLIC_BASE_URL`, `RESEND_FROM_EMAIL`, `TWILIO_PHONE_NUMBER`, and `CRON_SECRET` to `.env.example`.
+- Added matching local `.env` placeholders; `.env` remains ignored and must not be committed.
+
+Commands/checks:
+
+- `npm run lint` passed with 0 errors and 2 warnings.
+- `npx prisma validate` passed.
+- `npm run build` passed.
+
+Remaining warnings:
+
+- Client gallery page still uses `<img>` instead of Next `<Image />`.
+- Booking form uses React Hook Form `watch()`, which React Compiler warns it cannot memoize safely.

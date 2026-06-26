@@ -1,4 +1,3 @@
-import { redirect } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, Calendar, MapPin, DollarSign, FileText, AlertCircle } from "lucide-react";
 import { requireAdmin } from "@/lib/auth";
@@ -54,7 +53,6 @@ export default async function AdminBookingDetailPage({
   }
 
   const scheduledDate = new Date(booking.scheduledAt);
-  const totalAmount = booking.payments.reduce((sum, p) => sum + p.amountCents, 0);
   const totalPaid = booking.payments
     .filter((p) => p.status === "PAID")
     .reduce((sum, p) => sum + p.amountCents, 0);

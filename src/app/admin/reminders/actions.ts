@@ -1,22 +1,29 @@
 "use server";
 
-import { requireUser, requireAdmin } from "@/lib/auth";
+import twilio from "twilio";
+import type { Booking, Gallery, ServicePackage, User } from "@prisma/client";
+import { requireUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { Resend } from "resend";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
-// Lazy load Twilio to avoid initialization errors during build
 function getTwilioClient() {
   if (!process.env.TWILIO_ACCOUNT_SID || !process.env.TWILIO_AUTH_TOKEN) {
     return null;
   }
-  const twilio = require("twilio");
+
   return twilio(
     process.env.TWILIO_ACCOUNT_SID,
     process.env.TWILIO_AUTH_TOKEN
   );
 }
+
+type ReminderBooking = Booking & {
+  client: User;
+  package: ServicePackage | null;
+  gallery: Gallery | null;
+};
 
 interface ScheduleReminderInput {
   bookingId: string;
@@ -253,7 +260,7 @@ export async function sendReminderAction(reminderId: string) {
       try {
         await twilioClient.messages.create({
           body: message,
-          from: process.env.TWILIO_PHONE_NUMBER,
+          from: process.env.TWILIO_PHONE_NUMBER ?? process.env.TWILIO_FROM_NUMBER,
           to: booking.client.phone,
         });
       } catch (error) {
@@ -296,10 +303,7 @@ export async function sendReminderAction(reminderId: string) {
   }
 }
 
-function generateEmailTemplate(
-  booking: any,
-  scheduledDate: Date
-): string {
+function generateEmailTemplate(booking: ReminderBooking, scheduledDate: Date): string {
   const formattedDate = scheduledDate.toLocaleDateString("en-US", {
     weekday: "long",
     year: "numeric",
@@ -389,7 +393,7 @@ function generateEmailTemplate(
   `;
 }
 
-function generateSmsTemplate(booking: any, scheduledDate: Date): string {
+function generateSmsTemplate(booking: ReminderBooking, scheduledDate: Date): string {
   const formattedDate = scheduledDate.toLocaleDateString("en-US", {
     month: "short",
     day: "numeric",

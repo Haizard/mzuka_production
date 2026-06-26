@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import type { BookingStatus } from "@prisma/client";
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { ChevronDown, Calendar, DollarSign, User } from "lucide-react";
 import { getAllBookings, getBookingStats, updateBookingStatusAction } from "./actions";
@@ -44,15 +45,11 @@ export default function AdminBookingsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
-  useEffect(() => {
-    loadData();
-  }, [filter]);
-
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     setIsLoading(true);
     const [bookingsResult, statsResult] = await Promise.all([
       getAllBookings({
-        status: filter === "ALL" ? undefined : filter,
+        status: filter === "ALL" ? undefined : (filter as BookingStatus),
       }),
       getBookingStats(),
     ]);
@@ -64,7 +61,12 @@ export default function AdminBookingsPage() {
       setStats(statsResult.stats);
     }
     setIsLoading(false);
-  };
+  }, [filter]);
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    loadData();
+  }, [loadData]);
 
   const handleStatusChange = async (bookingId: string, newStatus: string) => {
     const result = await updateBookingStatusAction(bookingId, newStatus);

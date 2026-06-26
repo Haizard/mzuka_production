@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Plus, Edit2, Trash2, X } from "lucide-react";
 import {
   getServicePackages,
@@ -30,17 +30,18 @@ export default function AdminPackagesPage() {
     durationMin: "",
   });
 
-  useEffect(() => {
-    loadPackages();
-  }, []);
-
-  const loadPackages = async () => {
+  const loadPackages = useCallback(async () => {
     const result = await getServicePackages();
     if (result.success) {
       setPackages(result.packages);
     }
     setIsLoading(false);
-  };
+  }, []);
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    loadPackages();
+  }, [loadPackages]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

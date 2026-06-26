@@ -1,11 +1,12 @@
 "use server";
 
+import type { BookingStatus, PaymentStatus } from "@prisma/client";
 import { requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 
 export interface GetAllBookingsInput {
-  status?: string;
-  paymentStatus?: string;
+  status?: BookingStatus;
+  paymentStatus?: PaymentStatus;
   limit?: number;
   offset?: number;
 }
@@ -14,7 +15,10 @@ export async function getAllBookings(input: GetAllBookingsInput = {}) {
   try {
     await requireAdmin();
 
-    const where: any = {};
+    const where: {
+      status?: BookingStatus;
+      paymentStatus?: PaymentStatus;
+    } = {};
     if (input.status) where.status = input.status;
     if (input.paymentStatus) where.paymentStatus = input.paymentStatus;
 
@@ -60,16 +64,23 @@ export async function getAllBookings(input: GetAllBookingsInput = {}) {
   }
 }
 
-export async function updateBookingStatusAction(
-  bookingId: string,
-  newStatus: string
-) {
-  try {
-    await requireAdmin();
+const validBookingStatuses: BookingStatus[] = [
+  "REQUESTED",
+  "CONFIRMED",
+  "IN_PROGRESS",
+  "COMPLETED",
+  "CANCELLED",
+];
 
-    // Validate status is a valid BookingStatus
-    const validStatuses = ["REQUESTED", "CONFIRMED", "IN_PROGRESS", "COMPLETED", "CANCELLED"];
-    if (!validStatuses.includes(newStatus)) {
+function isBookingStatus(value: string): value is BookingStatus {
+  return validBookingStatuses.includes(value as BookingStatus);
+}
+
+export async function updateBookingStatusAction(bookingId: string, newStatus: string) {
+  try {
+    const admin = await requireAdmin();
+
+    if (!isBookingStatus(newStatus)) {
       return {
         success: false,
         error: "Invalid booking status",
@@ -90,7 +101,7 @@ export async function updateBookingStatusAction(
     const updatedBooking = await prisma.booking.update({
       where: { id: bookingId },
       data: {
-        status: newStatus as any,
+        status: newStatus,
       },
       include: {
         client: true,
@@ -100,7 +111,7 @@ export async function updateBookingStatusAction(
     // Log the action
     await prisma.auditLog.create({
       data: {
-        actorId: (await requireAdmin()).id,
+        actorId: admin.id,
         action: "BOOKING_UPDATED",
         entity: "Booking",
         entityId: bookingId,
