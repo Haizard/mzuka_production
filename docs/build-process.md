@@ -153,21 +153,21 @@ Required work:
 
 Goal: launch the core private booking and protected-gallery workflow.
 
-Status: Not started
+Status: Started
 
 Required work:
 
-- [ ] Secure client login
-- [ ] Admin login
-- [ ] User roles: founder, admin, staff, client
-- [ ] Admin approval before client access
+- [x] Secure client login
+- [x] Admin login
+- [x] User roles: founder, admin, staff, client
+- [x] Admin approval before client access
 - [ ] Appointment booking flow
 - [ ] Service/package selection
 - [ ] Booking status management
 - [ ] Email reminder foundation
 - [ ] SMS reminder foundation
-- [ ] Admin dashboard overview
-- [ ] Client management
+- [x] Admin dashboard overview
+- [x] Client management
 - [ ] Gallery creation
 - [ ] Admin media upload
 - [ ] Watermarked preview generation
@@ -337,11 +337,11 @@ As of 2026-06-26:
 - [x] Visual reference images exist
 - [x] Build process pilot document created
 - [x] Next.js app scaffold exists
-- [ ] Backend exists
+- [x] Backend exists
 - [x] Database schema exists
-- [ ] Auth exists
+- [x] Auth exists
 - [ ] Booking flow exists
-- [ ] Admin dashboard exists
+- [x] Admin dashboard exists
 - [ ] Gallery system exists
 - [ ] Payment system exists
 - [ ] AI scoring exists
@@ -431,6 +431,37 @@ Blockers/notes:
 - Local `.env` exists but its `DATABASE_URL` must be replaced with a real PostgreSQL URL before migrations can run.
 - No real auth, API routes, database migrations, booking logic, upload flow, Stripe flow, or AI scoring implementation exists yet.
 
+### 2026-06-26 - Phase 1 auth and approval foundation
+
+Agent: Codex
+
+Work completed:
+
+- Added Prisma Client singleton with Prisma 7 PostgreSQL adapter support.
+- Added secure password hashing with Node `scrypt`.
+- Added signed HTTP-only session cookies using `AUTH_SECRET`.
+- Added auth guards for signed-in users, approved users, and admin roles.
+- Added `/register`, `/login`, and `/pending-approval` routes.
+- Added `/client` protected portal for approved clients.
+- Added `/admin` protected dashboard for founder/admin/staff users.
+- Added `/admin/approvals` for reviewing pending clients.
+- Added approve/reject server actions that update user status and create audit logs.
+- Added landing-page links into login/register.
+- First registered user becomes the approved `FOUNDER`; later accounts become pending `CLIENT` users.
+
+Commands/checks:
+
+- `DATABASE_URL='postgresql://postgres:postgres@localhost:5432/muzuka_gilbert' npx prisma generate` passed.
+- `npm run lint` passed.
+- `DATABASE_URL='postgresql://postgres:postgres@localhost:5432/muzuka_gilbert' npx prisma validate` passed.
+- `DATABASE_URL='postgresql://postgres:postgres@localhost:5432/muzuka_gilbert' npm run build` passed.
+
+Blockers/notes:
+
+- Local `.env` still needs a real PostgreSQL connection string before `npx prisma migrate dev --name init` can run.
+- Auth pages are implemented, but they cannot be tested end-to-end until the database migration is applied.
+- Booking, gallery upload, Stripe unlock, AWS S3, notifications, and AI scoring are not implemented yet.
+
 ## 12. Immediate Next Step
 
-Start Phase 1 by implementing authentication foundations: user roles, client login, admin login, admin approval status, and protected route structure.
+Continue Phase 1 by connecting a real PostgreSQL database, running the first Prisma migration, then implementing appointment booking and service/package selection.

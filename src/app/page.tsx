@@ -1,4 +1,5 @@
 import Image from "next/image";
+import Link from "next/link";
 import type { ComponentType, ReactNode } from "react";
 import {
   Aperture,
@@ -118,14 +119,20 @@ export default function Home() {
               </h1>
             </div>
             <div className="flex items-center gap-3">
-              <button className="inline-flex h-11 items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-4 text-sm text-zinc-200">
+              <Link
+                className="inline-flex h-11 items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-4 text-sm text-zinc-200"
+                href="/login"
+              >
                 <LockKeyhole className="h-4 w-4 text-[var(--gold)]" />
-                Private access
-              </button>
-              <button className="inline-flex h-11 items-center gap-2 rounded-lg bg-[var(--gold)] px-4 text-sm font-semibold text-black">
+                Sign in
+              </Link>
+              <Link
+                className="inline-flex h-11 items-center gap-2 rounded-lg bg-[var(--gold)] px-4 text-sm font-semibold text-black"
+                href="/register"
+              >
                 <CalendarDays className="h-4 w-4" />
-                New booking
-              </button>
+                Request access
+              </Link>
             </div>
           </header>
 
@@ -153,6 +160,20 @@ export default function Home() {
                       &ldquo;We don&apos;t just take pictures. We create
                       masterpieces that tell your story.&rdquo;
                     </p>
+                    <div className="mt-6 flex flex-col gap-3 sm:flex-row lg:hidden">
+                      <Link
+                        className="inline-flex h-12 items-center justify-center rounded-lg bg-[var(--gold)] px-5 text-sm font-semibold text-black"
+                        href="/register"
+                      >
+                        Request access
+                      </Link>
+                      <Link
+                        className="inline-flex h-12 items-center justify-center rounded-lg border border-white/10 bg-black/45 px-5 text-sm font-medium text-white"
+                        href="/login"
+                      >
+                        Sign in
+                      </Link>
+                    </div>
                   </div>
 
                   <div className="grid gap-3 sm:grid-cols-3">
