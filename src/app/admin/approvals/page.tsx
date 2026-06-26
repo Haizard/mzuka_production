@@ -56,7 +56,7 @@ export default async function ApprovalsPage() {
             </div>
           ) : (
             <div className="divide-y divide-white/10">
-              {pendingClients.map((client) => (
+              {pendingClients.map((client: (typeof pendingClients)[number]) => (
                 <div
                   className="grid gap-4 p-5 md:grid-cols-[1fr_auto] md:items-center"
                   key={client.id}
