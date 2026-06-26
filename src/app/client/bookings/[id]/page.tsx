@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowLeft, Calendar, MapPin, DollarSign, FileText, AlertCircle } from "lucide-react";
+import { ArrowLeft, Calendar, MapPin, DollarSign, FileText, AlertCircle, CheckCircle } from "lucide-react";
 import { getBookingById } from "@/app/client/actions";
 
 export const dynamic = "force-dynamic";
@@ -8,9 +8,15 @@ interface BookingDetailPageProps {
   params: {
     id: string;
   };
+  searchParams: {
+    payment_success?: string;
+  };
 }
 
-export default async function BookingDetailPage({ params }: BookingDetailPageProps) {
+export default async function BookingDetailPage({
+  params,
+  searchParams,
+}: BookingDetailPageProps) {
   const result = await getBookingById(params.id);
 
   if (!result.success || !result.booking) {
@@ -47,6 +53,16 @@ export default async function BookingDetailPage({ params }: BookingDetailPagePro
           <p className="text-xs uppercase tracking-[0.24em] text-[var(--gold)]">Booking Details</p>
           <h1 className="mt-2 text-3xl font-semibold">{booking.title}</h1>
         </header>
+
+        {searchParams.payment_success && (
+          <div className="mb-6 rounded-lg border border-emerald-500/20 bg-emerald-500/10 p-4 flex items-start gap-3">
+            <CheckCircle className="h-5 w-5 text-emerald-400 flex-shrink-0 mt-0.5" />
+            <div>
+              <p className="text-emerald-200 font-semibold">Payment Successful!</p>
+              <p className="text-sm text-emerald-200/80 mt-1">Your payment has been processed. Your gallery will be available soon.</p>
+            </div>
+          </div>
+        )}
 
         <div className="grid gap-6 md:grid-cols-3">
           {/* Main Content */}
@@ -204,9 +220,20 @@ export default async function BookingDetailPage({ params }: BookingDetailPagePro
               </div>
 
               {booking.paymentStatus === "UNPAID" && (
-                <button className="mt-4 w-full rounded-lg bg-[var(--gold)] px-4 py-2 text-sm font-semibold text-black hover:bg-yellow-500 transition">
+                <Link
+                  href={`/client/checkout?bookingId=${booking.id}`}
+                  className="mt-4 w-full inline-block rounded-lg bg-[var(--gold)] px-4 py-2 text-sm font-semibold text-black hover:bg-yellow-500 transition text-center"
+                >
                   Complete Payment
-                </button>
+                </Link>
+              )}
+              {booking.paymentStatus === "DEPOSIT_PAID" && (
+                <Link
+                  href={`/client/checkout?bookingId=${booking.id}`}
+                  className="mt-4 w-full inline-block rounded-lg bg-[var(--gold)] px-4 py-2 text-sm font-semibold text-black hover:bg-yellow-500 transition text-center"
+                >
+                  Pay Remaining Balance
+                </Link>
               )}
             </div>
           </div>

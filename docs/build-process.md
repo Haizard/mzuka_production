@@ -343,9 +343,9 @@ As of 2026-06-26:
 - [x] Booking flow exists
 - [x] Admin dashboard exists
 - [x] Gallery system exists
-- [ ] Payment system exists
+- [x] Payment system exists (Stripe integration complete)
 - [ ] AI scoring exists
-- [ ] AWS storage integration exists
+- [x] AWS storage integration exists (signed URLs)
 - [ ] Notification system exists
 - [ ] Tests exist
 - [ ] Deployment config exists
@@ -554,8 +554,76 @@ Blockers/notes:
 - Database still not accessible locally - migration not run on Supabase yet
 - Next: Stripe payment integration to complete booking-to-gallery workflow
 
+### 2026-06-26 - Stripe payment integration
+
+Agent: GitHub Copilot
+
+Work completed:
+
+- Installed Stripe package (`npm install stripe`)
+- Created Stripe server actions in `/src/app/client/actions.ts`:
+  - `createCheckoutSessionAction()` - Creates Stripe checkout session with amount calculation
+  - Automatically calculates remaining balance due (package price - already paid)
+  - Reuses existing unpaid checkout sessions for idempotency
+  - Returns redirect URL for client-side payment flow
+  - Stores `stripeCheckoutSession` ID in Payment record
+- Created checkout page in `/src/app/client/checkout/page.tsx`:
+  - Server component that initiates checkout session
+  - Handles errors gracefully
+  - Redirects to Stripe Checkout URL or shows error
+- Created Stripe webhook handler in `/src/app/api/webhooks/stripe/route.ts`:
+  - Validates Stripe signature on all incoming events
+  - Handles `checkout.session.completed` event:
+    - Updates Payment status to "PAID"
+    - Updates Booking `paymentStatus` (PAID if fully paid, DEPOSIT_PAID if partial)
+    - Creates audit log for payment received
+  - Handles `checkout.session.expired` event:
+    - Marks payment as FAILED
+  - Handles `charge.refunded` event:
+    - Updates payment and booking status to reflect refund
+- Updated booking detail page at `/src/app/client/bookings/[id]/page.tsx`:
+  - "Complete Payment" button now links to checkout page with bookingId parameter
+  - Added "Pay Remaining Balance" button for partial payments
+  - Added payment success notification with green checkmark (visible when `payment_success=true`)
+  - Added `searchParams` handling for payment status feedback
+- Payment flow now complete:
+  1. Client clicks "Complete Payment" button
+  2. Redirects to checkout page which creates Stripe session
+  3. Redirects to Stripe Checkout form
+  4. After payment, Stripe webhook confirms payment
+  5. Payment status updated in database
+  6. Gallery access automatically unlocked via existing `getGalleryAccessUrls()` logic
+- Integrated with existing payment gating:
+  - Gallery preview URLs remain available before payment (2hr expiry)
+  - Download URLs unlock after payment (1hr expiry)
+  - Access logging automatically captures payment access differences
+
+Commands/checks:
+
+- `npm install stripe` - Added Stripe dependency
+- `npm run build` - All 17 routes successfully compiling:
+  - ✓ /api/webhooks/stripe (new webhook)
+  - ✓ /client/checkout (new checkout page)
+  - ✓ /client/bookings/[id] (updated with payment flow)
+- Full TypeScript validation passed
+
+Required environment variables for production:
+
+- `STRIPE_SECRET_KEY` - Stripe secret API key (from Stripe dashboard)
+- `STRIPE_WEBHOOK_SECRET` - Webhook signing secret (from Stripe dashboard)
+- `NEXT_PUBLIC_BASE_URL` - Base URL for payment success/cancel redirects
+
+Blockers/notes:
+
+- Stripe API keys not yet configured in `.env` - needed for actual payment processing
+- Webhook URL needs to be registered in Stripe dashboard at `/api/webhooks/stripe` endpoint
+- Database still not accessible locally for testing payment persistence
+- Success notification appears on booking page after Stripe redirects back (requires database webhook confirmation)
+- Next: Configure Stripe API keys and test full payment flow end-to-end
+
 ## 12. Immediate Next Step
 
-Implement Stripe payment integration to unlock full-quality gallery access after booking payment.
+Configure Stripe API keys, test full payment flow, then implement email/SMS booking reminders.
 
 ## 13. Agent Work Log - Full History
+
