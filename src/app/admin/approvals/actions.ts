@@ -3,14 +3,13 @@
 import { revalidatePath } from "next/cache";
 import { requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { sendApprovalMessage, sendRejectionMessage } from "@/lib/messages";
 
 export async function approveClientAction(formData: FormData) {
   const admin = await requireAdmin();
   const clientId = String(formData.get("clientId") ?? "");
 
-  if (!clientId) {
-    return;
-  }
+  if (!clientId) return;
 
   await prisma.$transaction([
     prisma.user.update({
@@ -36,6 +35,17 @@ export async function approveClientAction(formData: FormData) {
     }),
   ]);
 
+  // Notify client — fetch after transaction so we have fresh data
+  const client = await prisma.user.findUnique({
+    where: { id: clientId },
+    select: { id: true, name: true, email: true, phone: true },
+  });
+  if (client) {
+    sendApprovalMessage(client).catch((err) =>
+      console.error("[messages] approval send failed:", err)
+    );
+  }
+
   revalidatePath("/admin");
   revalidatePath("/admin/approvals");
 }
@@ -44,9 +54,7 @@ export async function rejectClientAction(formData: FormData) {
   const admin = await requireAdmin();
   const clientId = String(formData.get("clientId") ?? "");
 
-  if (!clientId) {
-    return;
-  }
+  if (!clientId) return;
 
   await prisma.$transaction([
     prisma.user.update({
@@ -71,6 +79,16 @@ export async function rejectClientAction(formData: FormData) {
       },
     }),
   ]);
+
+  const client = await prisma.user.findUnique({
+    where: { id: clientId },
+    select: { id: true, name: true, email: true },
+  });
+  if (client) {
+    sendRejectionMessage(client).catch((err) =>
+      console.error("[messages] rejection send failed:", err)
+    );
+  }
 
   revalidatePath("/admin");
   revalidatePath("/admin/approvals");

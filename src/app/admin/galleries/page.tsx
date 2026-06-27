@@ -1,13 +1,23 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Upload, Loader2, Check, X } from "lucide-react";
+import { Upload, Loader2, Check, X, Sparkles, Star } from "lucide-react";
 import {
   uploadMediaAssetAction,
   generatePreviewAction,
+  analyzeGalleryAction,
   getAdminGalleries,
   releaseMediaAssetsAction,
 } from "./actions";
+
+interface AiAnalysis {
+  overallScore: number;
+  sharpness: number;
+  lighting: number;
+  composition: number;
+  notes: string;
+  recommendRelease?: boolean;
+}
 
 interface MediaAsset {
   id: string;
@@ -15,6 +25,7 @@ interface MediaAsset {
   kind: string;
   releaseStatus: string;
   createdAt: Date;
+  aiAnalysis?: AiAnalysis | null;
 }
 
 interface BookingWithGallery {
@@ -46,6 +57,7 @@ export default function AdminGalleriesPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [uploadingId, setUploadingId] = useState<string | null>(null);
   const [releaseLoading, setReleaseLoading] = useState<string | null>(null);
+  const [analysisLoading, setAnalysisLoading] = useState<string | null>(null);
 
   const loadGalleries = useCallback(async () => {
     const result = await getAdminGalleries();
@@ -112,6 +124,13 @@ export default function AdminGalleriesPage() {
     setReleaseLoading(null);
   };
 
+  const handleAnalyzeGallery = async (galleryId: string) => {
+    setAnalysisLoading(galleryId);
+    await analyzeGalleryAction(galleryId);
+    loadGalleries();
+    setAnalysisLoading(null);
+  };
+
   return (
     <main className="space-y-6">
       <div>
@@ -154,19 +173,33 @@ export default function AdminGalleriesPage() {
                 {gallery.mediaAssets.length > 0 && (
                   <div className="mb-4 p-4 bg-white/5 rounded-lg">
                     <p className="text-xs text-zinc-500 uppercase mb-3">Media</p>
-                    <div className="space-y-2 max-h-32 overflow-y-auto">
+                    <div className="space-y-2 max-h-48 overflow-y-auto">
                       {gallery.mediaAssets.map((asset) => (
                         <div
                           key={asset.id}
                           className="flex items-center justify-between text-sm p-2 bg-white/5 rounded"
                         >
-                          <div>
+                          <div className="min-w-0 flex-1">
                             <p className="text-white truncate">{asset.filename}</p>
                             <p className="text-xs text-zinc-500">
                               {asset.kind === "PHOTO" ? "📷" : "🎥"} {asset.kind}
                             </p>
                           </div>
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-3 ml-3 shrink-0">
+                            {/* AI Score badge */}
+                            {asset.kind === "PHOTO" && asset.aiAnalysis && (
+                              <span
+                                className={`text-xs font-bold px-2 py-0.5 rounded-full ${
+                                  asset.aiAnalysis.overallScore >= 70
+                                    ? "bg-emerald-500/20 text-emerald-300"
+                                    : "bg-red-500/20 text-red-300"
+                                }`}
+                                title={asset.aiAnalysis.notes}
+                              >
+                                <Star className="inline h-3 w-3 mb-0.5 mr-0.5" />
+                                {asset.aiAnalysis.overallScore}
+                              </span>
+                            )}
                             {asset.releaseStatus === "RELEASED" ? (
                               <Check className="h-4 w-4 text-emerald-400" />
                             ) : (
@@ -179,7 +212,7 @@ export default function AdminGalleriesPage() {
                   </div>
                 )}
 
-                {/* Upload Area */}
+                {/* Upload + Analyse + Release */}
                 <div className="flex gap-3">
                   <label className="flex-1 relative cursor-pointer">
                     <input
@@ -193,7 +226,7 @@ export default function AdminGalleriesPage() {
                       {uploadingId === gallery.id ? (
                         <>
                           <Loader2 className="h-5 w-5 animate-spin mx-auto mb-2 text-[var(--gold)]" />
-                          <p className="text-sm text-zinc-400">Uploading...</p>
+                          <p className="text-sm text-zinc-400">Uploading &amp; generating preview…</p>
                         </>
                       ) : (
                         <>
@@ -203,6 +236,25 @@ export default function AdminGalleriesPage() {
                       )}
                     </div>
                   </label>
+
+                  {/* AI Analyse button — shows when there are unanalysed photos */}
+                  {gallery.mediaAssets.some(
+                    (a) => a.kind === "PHOTO" && !a.aiAnalysis
+                  ) && (
+                    <button
+                      onClick={() => handleAnalyzeGallery(gallery.id)}
+                      disabled={analysisLoading === gallery.id}
+                      className="px-4 py-2 rounded-lg bg-violet-700 hover:bg-violet-600 text-white font-semibold disabled:opacity-50 flex items-center gap-2 transition"
+                      title="Run AI quality scoring on all unanalysed photos"
+                    >
+                      {analysisLoading === gallery.id ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Sparkles className="h-4 w-4" />
+                      )}
+                      Analyse
+                    </button>
+                  )}
 
                   {gallery.mediaAssets.some((a) => a.releaseStatus === "DRAFT") && (
                     <button

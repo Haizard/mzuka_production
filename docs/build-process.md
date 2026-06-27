@@ -179,8 +179,8 @@ Required work:
 - [x] Full-quality download unlock after payment
 - [x] Gallery expiration
 - [x] Access logs
-- [ ] AI photo scoring prototype
-- [ ] Automatic booking/payment/gallery messages
+- [x] AI photo scoring prototype
+- [x] Automatic booking/payment/gallery messages
 
 ### Phase 2: Security And Media Hardening
 
@@ -660,7 +660,8 @@ Blockers/notes:
 
 ## 12. Immediate Next Step
 
-Set up external cron job for `/api/cron/process-reminders`, configure API keys, test full workflow (booking → reminders → payment → gallery), then implement AI photo scoring.
+Phase 1 is complete. Move to Phase 2: Security and Media Hardening.
+Next tasks: signed S3 URLs, dynamic watermarks, device/IP verification, rate limiting.
 
 ## 13. Agent Work Log - Full History
 
@@ -764,3 +765,24 @@ Remaining warnings:
 
 - Client gallery page still uses `<img>` instead of Next `<Image />`.
 - Booking form uses React Hook Form `watch()`, which React Compiler warns it cannot memoize safely.
+
+### 2026-06-27 — AI photo scoring + automatic messages
+
+Agent: Kiro
+
+Work completed:
+
+**AI Photo Scoring**
+- Created `src/lib/ai-scoring.ts` — GPT-4o Vision scoring across 7 dimensions, release threshold 70
+- Added `analyzeMediaAssetAction` and `analyzeGalleryAction` to gallery actions
+- Admin gallery page now shows per-asset score badges and an "Analyse" button
+
+**Automatic Messages**
+- Created `src/lib/messages.ts` — luxury branded emails + SMS for all key events
+- Triggers: welcome on register, approval/rejection, booking confirmed, payment received, gallery ready
+- All sends are non-blocking and stored in the Message table for audit
+
+Commands/checks:
+- `npm install openai`
+- `npm run build` passed — all 19 routes clean
+- `npm test` passed — 70/70 tests green

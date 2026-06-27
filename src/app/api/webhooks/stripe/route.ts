@@ -1,6 +1,7 @@
 import { headers } from "next/headers";
 import Stripe from "stripe";
 import { prisma } from "@/lib/db";
+import { sendPaymentReceivedMessage } from "@/lib/messages";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || "");
 const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET || "";
@@ -80,6 +81,26 @@ export async function POST(request: Request) {
                 },
               },
             });
+
+            // Notify client of payment receipt
+            const client = await prisma.user.findUnique({
+              where: { id: booking.clientId },
+              select: { id: true, name: true, email: true, phone: true },
+            });
+            if (client) {
+              const paidPayment = booking.payments.find((p) => p.id === paymentId);
+              sendPaymentReceivedMessage({
+                userId: client.id,
+                userName: client.name,
+                userEmail: client.email,
+                userPhone: client.phone,
+                bookingTitle: booking.title,
+                amountCents: paidPayment?.amountCents ?? totalPaid,
+                currency: paidPayment?.currency ?? "USD",
+              }).catch((err) =>
+                console.error("[messages] payment-received send failed:", err)
+              );
+            }
           }
         }
         break;

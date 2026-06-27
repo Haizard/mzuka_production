@@ -3,6 +3,7 @@
 import type { BookingStatus, PaymentStatus } from "@prisma/client";
 import { requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { sendBookingConfirmedMessage } from "@/lib/messages";
 
 export interface GetAllBookingsInput {
   status?: BookingStatus;
@@ -100,12 +101,8 @@ export async function updateBookingStatusAction(bookingId: string, newStatus: st
 
     const updatedBooking = await prisma.booking.update({
       where: { id: bookingId },
-      data: {
-        status: newStatus,
-      },
-      include: {
-        client: true,
-      },
+      data: { status: newStatus },
+      include: { client: true, package: true },
     });
 
     // Log the action
@@ -115,17 +112,26 @@ export async function updateBookingStatusAction(bookingId: string, newStatus: st
         action: "BOOKING_UPDATED",
         entity: "Booking",
         entityId: bookingId,
-        metadata: {
-          oldStatus: booking.status,
-          newStatus,
-        },
+        metadata: { oldStatus: booking.status, newStatus },
       },
     });
 
-    return {
-      success: true,
-      booking: updatedBooking,
-    };
+    // Send confirmation message when status moves to CONFIRMED
+    if (newStatus === "CONFIRMED") {
+      sendBookingConfirmedMessage({
+        userId: updatedBooking.client.id,
+        userName: updatedBooking.client.name,
+        userEmail: updatedBooking.client.email,
+        userPhone: updatedBooking.client.phone,
+        bookingTitle: updatedBooking.title,
+        serviceType: updatedBooking.serviceType,
+        scheduledAt: updatedBooking.scheduledAt,
+        location: updatedBooking.location,
+        packageName: updatedBooking.package?.name,
+      }).catch((err) => console.error("[messages] booking-confirmed send failed:", err));
+    }
+
+    return { success: true, booking: updatedBooking };
   } catch (error) {
     console.error("Failed to update booking:", error);
     return {

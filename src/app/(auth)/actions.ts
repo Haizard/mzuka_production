@@ -5,6 +5,7 @@ import { z } from "zod";
 import { createUserSession, clearUserSession } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { hashPassword, verifyPassword } from "@/lib/password";
+import { sendWelcomeMessage } from "@/lib/messages";
 
 const registerSchema = z.object({
   name: z.string().trim().min(2, "Name is required."),
@@ -73,6 +74,14 @@ export async function registerAction(
   });
 
   await createUserSession(user.id);
+
+  // Send welcome message (non-blocking — don't fail registration if this errors)
+  sendWelcomeMessage({
+    id: user.id,
+    name: parsed.data.name,
+    email: parsed.data.email,
+    phone: parsed.data.phone,
+  }).catch((err) => console.error("[messages] welcome send failed:", err));
 
   if (user.role === "FOUNDER") {
     redirect("/admin");

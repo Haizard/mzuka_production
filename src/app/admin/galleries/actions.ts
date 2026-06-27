@@ -10,6 +10,8 @@ import {
   uploadPreviewToS3,
 } from "@/lib/s3";
 import { generateWatermarkedPreview } from "@/lib/watermark";
+import { scorePhoto, RELEASE_THRESHOLD } from "@/lib/ai-scoring";
+import { sendGalleryReadyMessage } from "@/lib/messages";
 
 // ── Gallery CRUD ──────────────────────────────────────────────────────────────
 
@@ -185,13 +187,118 @@ export async function generatePreviewAction(mediaAssetId: string) {
   }
 }
 
+// ── AI photo quality scoring ──────────────────────────────────────────────────
+
+/**
+ * Runs OpenAI Vision scoring on a PHOTO asset.
+ * Downloads the original from S3, sends it as base64 to GPT-4o,
+ * and saves the AiAnalysis record.
+ * Returns the scores and a release recommendation.
+ */
+export async function analyzeMediaAssetAction(mediaAssetId: string) {
+  try {
+    await requireAdmin();
+
+    const asset = await prisma.mediaAsset.findUnique({
+      where: { id: mediaAssetId },
+    });
+
+    if (!asset) return { success: false, error: "Media asset not found" };
+    if (asset.kind !== "PHOTO") return { success: false, error: "AI scoring only supports photos" };
+
+    // Don't re-score if already done
+    const existing = await prisma.aiAnalysis.findUnique({
+      where: { mediaAssetId },
+    });
+    if (existing) return { success: true, analysis: existing, cached: true };
+
+    const bucket = process.env.AWS_S3_BUCKET_PRIVATE_ORIGINALS;
+    if (!bucket) return { success: false, error: "Originals bucket not configured" };
+
+    // Download original for analysis
+    const imageBuffer = await downloadS3Object(bucket, asset.originalKey);
+    const imageBase64 = imageBuffer.toString("base64");
+
+    // Score with OpenAI Vision
+    const scores = await scorePhoto(imageBase64, asset.mimeType);
+
+    // Persist the analysis
+    const analysis = await prisma.aiAnalysis.create({
+      data: {
+        mediaAssetId,
+        sharpness:    scores.sharpness,
+        lighting:     scores.lighting,
+        faceQuality:  scores.faceQuality,
+        composition:  scores.composition,
+        colorGrade:   scores.colorGrade,
+        background:   scores.background,
+        emotion:      scores.emotion,
+        overallScore: scores.overallScore,
+        notes:        scores.notes,
+      },
+    });
+
+    return {
+      success: true,
+      analysis,
+      recommendRelease: scores.recommendRelease,
+      releaseThreshold: RELEASE_THRESHOLD,
+    };
+  } catch (error) {
+    console.error("Failed to analyze media asset:", error);
+    return { success: false, error: "AI analysis failed" };
+  }
+}
+
+/**
+ * Runs AI scoring on all unanalysed PHOTO assets in a gallery
+ * and returns a summary with per-asset scores.
+ */
+export async function analyzeGalleryAction(galleryId: string) {
+  try {
+    await requireAdmin();
+
+    const assets = await prisma.mediaAsset.findMany({
+      where: { galleryId, kind: "PHOTO" },
+      include: { aiAnalysis: true },
+    });
+
+    const results = await Promise.allSettled(
+      assets.map(async (asset) => {
+        if (asset.aiAnalysis) {
+          return { id: asset.id, filename: asset.filename, analysis: asset.aiAnalysis, cached: true };
+        }
+        const result = await analyzeMediaAssetAction(asset.id);
+        return { id: asset.id, filename: asset.filename, ...result };
+      })
+    );
+
+    const scored = results
+      .filter((r) => r.status === "fulfilled")
+      .map((r) => (r as PromiseFulfilledResult<typeof results[0] extends PromiseFulfilledResult<infer T> ? T : never>).value);
+
+    const failed = results.filter((r) => r.status === "rejected").length;
+
+    return { success: true, scored, failed };
+  } catch (error) {
+    console.error("Gallery analysis failed:", error);
+    return { success: false, error: "Gallery analysis failed" };
+  }
+}
+
 // ── Release ───────────────────────────────────────────────────────────────────
 
 export async function releaseMediaAssetsAction(galleryId: string) {
   try {
     await requireAdmin();
 
-    const gallery = await prisma.gallery.findUnique({ where: { id: galleryId } });
+    const gallery = await prisma.gallery.findUnique({
+      where: { id: galleryId },
+      include: {
+        booking: { include: { client: true, payments: true } },
+        mediaAssets: true,
+      },
+    });
     if (!gallery) return { success: false, error: "Gallery not found" };
 
     const updated = await prisma.mediaAsset.updateMany({
@@ -207,6 +314,24 @@ export async function releaseMediaAssetsAction(galleryId: string) {
         metadata: { count: updated.count },
       },
     });
+
+    // Notify client that gallery is ready
+    const client = gallery.booking.client;
+    const isPaid = gallery.booking.payments.some((p) => p.status === "PAID");
+    const releasedCount = gallery.mediaAssets.filter(
+      (a) => a.releaseStatus === "DRAFT" // these are the ones we just released
+    ).length;
+
+    await sendGalleryReadyMessage({
+      userId: client.id,
+      userName: client.name,
+      userEmail: client.email,
+      userPhone: client.phone,
+      galleryTitle: gallery.title,
+      galleryId: gallery.id,
+      isPaid,
+      mediaCount: releasedCount || updated.count,
+    }).catch((err) => console.error("[messages] gallery-ready send failed:", err));
 
     return { success: true, count: updated.count };
   } catch (error) {
