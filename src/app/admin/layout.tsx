@@ -7,6 +7,7 @@ import {
   UserCheck,
   Package,
   Shield,
+  Clapperboard,
 } from "lucide-react";
 import { requireAdmin } from "@/lib/auth";
 
@@ -16,6 +17,7 @@ const navItems = [
   { href: "/admin/bookings", label: "Bookings", icon: CalendarDays },
   { href: "/admin/packages", label: "Packages", icon: Package },
   { href: "/admin/galleries", label: "Galleries", icon: GalleryHorizontalEnd },
+  { href: "/admin/production", label: "Production", icon: Clapperboard },
   { href: "/admin/security", label: "Security", icon: Shield },
 ];
 
