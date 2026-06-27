@@ -342,7 +342,10 @@ export async function releaseMediaAssetsAction(galleryId: string) {
 
 // ── Client gallery access ─────────────────────────────────────────────────────
 
-export async function getGalleryAccessUrls(galleryId: string) {
+export async function getGalleryAccessUrls(
+  galleryId: string,
+  requestMeta?: { ip?: string | null; userAgent?: string | null }
+) {
   try {
     const user = await requireApprovedUser();
 
@@ -389,11 +392,13 @@ export async function getGalleryAccessUrls(galleryId: string) {
           previewUrl = pv.previewUrl ?? null;
         }
 
-        // Record access
+        // Record access with IP and user-agent
         await prisma.accessLog.create({
           data: {
             galleryId,
             userId: user.id,
+            ipAddress: requestMeta?.ip ?? null,
+            userAgent: requestMeta?.userAgent ?? null,
             action: isPaid ? "FULL_ACCESS" : "PREVIEW_ACCESS",
           },
         });

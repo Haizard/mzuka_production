@@ -186,24 +186,24 @@ Required work:
 
 Goal: make the media protection model stronger and operationally reliable.
 
-Status: Not started
+Status: Complete
 
 Required work:
 
-- [ ] Signed S3 URLs
-- [ ] Separate preview and original media storage
-- [ ] Dynamic watermark with client name/email/order
-- [ ] Lower-quality preview generation
-- [ ] Device verification
-- [ ] IP verification
-- [ ] Expiring gallery sessions
-- [ ] Audit log dashboard
-- [ ] Rate limiting
-- [ ] Download permission controls
-- [ ] Share permission controls
-- [ ] Screenshot deterrence where browser-supported
-- [ ] Screen-recording detection where browser-supported
-- [ ] Clear legal disclaimer that external camera capture cannot be fully blocked
+- [x] Signed S3 URLs
+- [x] Separate preview and original media storage
+- [x] Dynamic watermark with client name/email/order
+- [x] Lower-quality preview generation
+- [x] Device verification
+- [x] IP verification
+- [x] Expiring gallery sessions
+- [x] Audit log dashboard
+- [x] Rate limiting
+- [x] Download permission controls
+- [x] Share permission controls
+- [x] Screenshot deterrence where browser-supported
+- [x] Screen-recording detection where browser-supported
+- [x] Clear legal disclaimer that external camera capture cannot be fully blocked
 
 ### Phase 3: Production Management
 
@@ -785,4 +785,47 @@ Work completed:
 Commands/checks:
 - `npm install openai`
 - `npm run build` passed — all 19 routes clean
+- `npm test` passed — 70/70 tests green
+
+### 2026-06-27 — Phase 2: Security & Media Hardening
+
+Agent: Kiro
+
+Work completed:
+
+**Rate Limiting**
+- Created `src/lib/rate-limit.ts` — sliding-window token bucket, in-memory, per-IP
+- Pre-configured profiles: auth (10/15min), gallery (60/min), cron (20/min), webhook (100/min)
+- Created `src/proxy.ts` (Next.js 16 proxy, previously middleware) — enforces rate limits on `/login`, `/register`, `/client/galleries/*`, `/api/cron/*`, `/api/webhooks/*`
+- Returns 429 with `Retry-After` header when limit exceeded
+
+**Audit Log & Access Dashboard**
+- Created `src/app/admin/security/actions.ts` — `getAuditLogs`, `getAccessLogs`, `getSecurityStats`, `updateGalleryPermissionsAction`, `revokeGalleryAccessAction`
+- Created `src/app/admin/security/page.tsx` — 4-tab dashboard: Overview (stats + recent activity), Audit Log (full table), Access Log (IP + user-agent per view), Gallery Permissions
+
+**Download & Share Permission Controls**
+- `updateGalleryPermissionsAction` — per-gallery toggles for `isDownloadOpen`, `isShareOpen`, `watermarkText`, `expiresAt`
+- `revokeGalleryAccessAction` — immediately expires a gallery and locks all permissions
+- Gallery Permissions tab — toggle switches, expiry presets (+7d/+14d/+30d/+60d/+90d/none), revoke button with confirmation
+
+**IP & Device Capture**
+- `getGalleryAccessUrls` updated to accept `{ ip, userAgent }` from request headers
+- Client gallery page reads `x-real-ip` / `x-forwarded-for` and `user-agent` headers server-side, passes to access log
+
+**Screenshot & Screen-Record Deterrence**
+- Created `src/components/gallery-protection.tsx` — client component mounting on preview-mode galleries:
+  - CSS: `pointer-events:none`, `user-select:none`, `webkit-user-drag:none` on all images
+  - JS: right-click context menu blocked on images
+  - JS: drag-start blocked on images
+  - JS: `visibilitychange` — blurs images when page is hidden (tab switch / screen-record detection)
+  - JS: `PrintScreen` key detection — briefly hides images
+  - Console warning with client name for forensic deterrence
+- Legal disclaimer banner on client gallery page
+- Admin security overview panel with legal notice for admin awareness
+
+**Admin Layout**
+- Created `src/app/admin/layout.tsx` — persistent sidebar (desktop) + horizontal nav (mobile) wrapping all admin routes including new Security tab
+
+Commands/checks:
+- `npm run build` passed — 20 routes, no warnings
 - `npm test` passed — 70/70 tests green

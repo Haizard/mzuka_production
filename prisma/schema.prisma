@@ -62,6 +62,21 @@ enum AuditAction {
   ACCESS_REVOKED
 }
 
+enum ProjectStage {
+  SHOOTING
+  CULLING
+  EDITING
+  REVIEW
+  DELIVERED
+  ARCHIVED
+}
+
+enum TaskStatus {
+  TODO
+  IN_PROGRESS
+  DONE
+}
+
 model User {
   id              String           @id @default(cuid())
   name            String
@@ -79,6 +94,10 @@ model User {
   approvals       ClientApproval[] @relation("ClientApproval")
   auditLogs       AuditLog[]
   messages        Message[]
+  staffAssignments StaffAssignment[]
+  assignedTasks   ProjectTask[]    @relation("TaskAssignee")
+  projectNotes    ProjectNote[]    @relation("NoteAuthor")
+  clientComms     ClientCommunication[] @relation("CommUser")
 }
 
 model ClientApproval {
@@ -124,6 +143,7 @@ model Booking {
   gallery       Gallery?
   payments      Payment[]
   reminders     BookingReminder[]
+  project       Project?
 }
 
 model BookingReminder {
@@ -242,4 +262,71 @@ model AuditLog {
   ipAddress String?
   createdAt DateTime    @default(now())
   actor     User?       @relation(fields: [actorId], references: [id])
+}
+
+// ── Phase 3: Production Management ───────────────────────────────────────────
+
+model Project {
+  id          String       @id @default(cuid())
+  bookingId   String       @unique
+  stage       ProjectStage @default(SHOOTING)
+  shootDate   DateTime?
+  editDueDate DateTime?
+  deliveredAt DateTime?
+  notes       String?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  booking     Booking      @relation(fields: [bookingId], references: [id])
+  assignments StaffAssignment[]
+  tasks       ProjectTask[]
+  internalNotes ProjectNote[]
+  communications ClientCommunication[]
+}
+
+model StaffAssignment {
+  id        String   @id @default(cuid())
+  projectId String
+  staffId   String
+  role      String   @default("Photographer")
+  createdAt DateTime @default(now())
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  staff     User     @relation(fields: [staffId], references: [id])
+}
+
+model ProjectTask {
+  id          String     @id @default(cuid())
+  projectId   String
+  title       String
+  description String?
+  status      TaskStatus @default(TODO)
+  assigneeId  String?
+  dueAt       DateTime?
+  completedAt DateTime?
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  project     Project    @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  assignee    User?      @relation("TaskAssignee", fields: [assigneeId], references: [id])
+}
+
+model ProjectNote {
+  id        String   @id @default(cuid())
+  projectId String
+  authorId  String
+  body      String
+  createdAt DateTime @default(now())
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  author    User     @relation("NoteAuthor", fields: [authorId], references: [id])
+}
+
+model ClientCommunication {
+  id        String   @id @default(cuid())
+  projectId String
+  userId    String
+  channel   String   // email | sms | in-app
+  subject   String
+  body      String
+  sentAt    DateTime?
+  createdAt DateTime @default(now())
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user      User     @relation("CommUser", fields: [userId], references: [id])
 }
