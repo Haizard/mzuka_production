@@ -170,7 +170,7 @@ Required work:
 - [x] Client management
 - [x] Gallery creation
 - [x] Admin media upload
-- [ ] Watermarked preview generation
+- [x] Watermarked preview generation
 - [x] Preview-only gallery before payment
 - [x] No download before payment
 - [x] No share before payment
@@ -377,6 +377,43 @@ After coding:
 5. Note blockers clearly.
 
 ## 11. Agent Work Log
+
+### 2026-06-27 — Watermarked preview generation
+
+Agent: Kiro
+
+Work completed:
+
+- Created `src/lib/watermark.ts`:
+  - Uses `sharp` (already installed) to resize originals to max 1200px wide
+  - Stamps a diagonal repeating grid watermark (`[MG] Muzuka Gilbert — Preview Only`)
+  - Adds a large centre label with client name + email
+  - Adds a gold bottom bar (`🔒 PREVIEW — Complete payment to unlock full quality`)
+  - Outputs a JPEG at 72 quality (protecting originals)
+- Updated `src/lib/s3.ts`:
+  - Added `downloadS3Object()` — pulls raw bytes from S3 for server-side processing
+  - Added `uploadPreviewToS3()` — uploads watermarked buffer to the previews bucket
+  - Fixed return types to be consistent (`downloadUrl: undefined` not `string | undefined`)
+- Updated `src/app/admin/galleries/actions.ts`:
+  - `uploadMediaAssetAction()` now logs `MEDIA_UPLOADED` audit entry
+  - Added `generatePreviewAction()` — two-step flow: download original → watermark → upload to previews bucket → save `previewKey`
+  - `getGalleryAccessUrls()` now checks gallery expiry, only shows `RELEASED` assets to clients, serves `previewUrl` (watermarked) before payment and `downloadUrl` (original) after payment
+  - `releaseMediaAssetsAction()` now logs `MEDIA_RELEASED` audit entry
+- Updated `src/app/admin/galleries/page.tsx`:
+  - After S3 PUT succeeds, calls `generatePreviewAction(mediaAsset.id)` automatically
+- Excluded `vitest.config.ts` and `src/tests` from Next.js TypeScript check in `tsconfig.json`
+- Fixed `vitest.config.ts` to use `sequence.concurrent: false` (Vitest 4 API)
+
+Commands/checks:
+
+- `npm run build` passed — all 19 routes clean
+- `npm test` passed — 70/70 tests green
+
+Notes:
+
+- Preview generation requires both S3 buckets to be configured (`AWS_S3_BUCKET_PRIVATE_ORIGINALS` and `AWS_S3_BUCKET_PRIVATE_PREVIEWS`)
+- If either bucket is missing, `generatePreviewAction` returns a graceful error and the asset is still saved without a preview key
+- Video assets skip watermarking and use their original key as the preview key for now
 
 ### 2026-06-26 - Documentation setup
 

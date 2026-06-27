@@ -2,7 +2,12 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { Upload, Loader2, Check, X } from "lucide-react";
-import { uploadMediaAssetAction, getAdminGalleries, releaseMediaAssetsAction } from "./actions";
+import {
+  uploadMediaAssetAction,
+  generatePreviewAction,
+  getAdminGalleries,
+  releaseMediaAssetsAction,
+} from "./actions";
 
 interface MediaAsset {
   id: string;
@@ -85,7 +90,9 @@ export default function AdminGalleriesPage() {
           headers: { "Content-Type": file.type },
         });
 
-        if (s3Response.ok) {
+        if (s3Response.ok && uploadResult.mediaAsset) {
+          // Generate watermarked preview server-side (photos only)
+          await generatePreviewAction(uploadResult.mediaAsset.id);
           loadGalleries();
         }
       }
