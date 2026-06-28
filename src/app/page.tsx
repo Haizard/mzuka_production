@@ -3,12 +3,12 @@ import Link from "next/link";
 import {
   Crown, Camera, ShieldCheck, Download, Star,
   CalendarDays, CheckCircle2, ArrowRight, Play,
-  Mail, Phone, MapPin, Globe, Share2,
+  Mail, Phone, MapPin, Globe, Share2, GalleryHorizontalEnd,
 } from "lucide-react";
 
 export default function Home() {
   return (
-    <main className="min-h-dvh bg-[var(--background)] text-white overflow-x-hidden">
+    <main className="min-h-dvh bg-[var(--background)] text-white overflow-x-hidden pb-[72px] lg:pb-0">
       <Nav />
       <Hero />
       <TrustBar />
@@ -20,6 +20,7 @@ export default function Home() {
       <Pricing />
       <CTA />
       <Footer />
+      <MobileHomeBottomBar />
     </main>
   );
 }
@@ -32,7 +33,7 @@ function Nav() {
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
         {/* Brand */}
         <Link href="/" className="flex items-center gap-3">
-          <div className="grid h-10 w-10 place-items-center rounded-lg border border-[var(--gold)]/40 bg-black text-[var(--gold)]">
+          <div className="grid h-10 w-10 place-items-center rounded-xl lg:rounded-lg border border-[var(--gold)]/40 bg-black text-[var(--gold)]">
             <Crown className="h-5 w-5" />
           </div>
           <div className="leading-none">
@@ -56,12 +57,44 @@ function Nav() {
           <Link href="/login" className="hidden sm:inline-flex h-10 items-center px-4 text-sm text-zinc-300 hover:text-white transition border border-white/10 rounded-lg hover:border-white/20">
             Sign In
           </Link>
-          <Link href="/register" className="inline-flex h-10 items-center gap-2 rounded-lg bg-[var(--gold)] px-4 text-sm font-semibold text-black hover:bg-yellow-400 transition">
+          {/* Desktop only Book button — mobile uses the bottom bar */}
+          <Link href="/register" className="hidden sm:inline-flex h-10 items-center gap-2 rounded-lg bg-[var(--gold)] px-4 text-sm font-semibold text-black hover:bg-yellow-400 transition">
             Book a Session
+          </Link>
+          {/* Mobile: sign in link */}
+          <Link href="/login" className="sm:hidden inline-flex h-9 items-center px-3 text-xs text-zinc-300 border border-white/10 rounded-xl hover:bg-white/5 transition">
+            Sign In
           </Link>
         </div>
       </div>
     </header>
+  );
+}
+
+// ── Mobile Home Bottom Action Bar ─────────────────────────────────────────────
+
+function MobileHomeBottomBar() {
+  return (
+    <div className="lg:hidden mobile-bottom-nav">
+      {/* Quick access row */}
+      <div className="flex items-center px-4 pt-2 pb-1 gap-3">
+        <Link
+          href="/register"
+          className="flex-1 flex items-center justify-center gap-2 h-12 rounded-2xl bg-[var(--gold)] text-black font-bold text-sm transition active:scale-95 active:opacity-90"
+        >
+          <CalendarDays className="h-4 w-4" />
+          Book Appointment
+        </Link>
+        <Link
+          href="/client"
+          className="flex items-center justify-center gap-2 h-12 px-4 rounded-2xl bg-white/8 border border-white/10 text-white text-sm font-medium transition active:scale-95"
+        >
+          <GalleryHorizontalEnd className="h-4 w-4 text-[var(--gold)]" />
+          Gallery
+        </Link>
+      </div>
+      <div className="h-[env(safe-area-inset-bottom,4px)]" />
+    </div>
   );
 }
 
