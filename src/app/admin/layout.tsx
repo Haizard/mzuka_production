@@ -8,17 +8,29 @@ import {
   Package,
   Shield,
   Clapperboard,
+  CalendarRange,
+  Truck,
+  DollarSign,
+  Receipt,
+  TrendingDown,
+  FileText,
 } from "lucide-react";
 import { requireAdmin } from "@/lib/auth";
 
 const navItems = [
-  { href: "/admin", label: "Dashboard", icon: LayoutDashboard, exact: true },
-  { href: "/admin/approvals", label: "Approvals", icon: UserCheck },
-  { href: "/admin/bookings", label: "Bookings", icon: CalendarDays },
-  { href: "/admin/packages", label: "Packages", icon: Package },
-  { href: "/admin/galleries", label: "Galleries", icon: GalleryHorizontalEnd },
-  { href: "/admin/production", label: "Production", icon: Clapperboard },
-  { href: "/admin/security", label: "Security", icon: Shield },
+  { href: "/admin",                      label: "Dashboard",  icon: LayoutDashboard },
+  { href: "/admin/approvals",            label: "Approvals",  icon: UserCheck },
+  { href: "/admin/bookings",             label: "Bookings",   icon: CalendarDays },
+  { href: "/admin/packages",             label: "Packages",   icon: Package },
+  { href: "/admin/galleries",            label: "Galleries",  icon: GalleryHorizontalEnd },
+  { href: "/admin/production",           label: "Production", icon: Clapperboard },
+  { href: "/admin/production/calendar",  label: "Calendar",   icon: CalendarRange },
+  { href: "/admin/production/delivery",  label: "Delivery",   icon: Truck },
+  { href: "/admin/finance",              label: "Finance",    icon: DollarSign },
+  { href: "/admin/finance/invoices",     label: "Invoices",   icon: Receipt },
+  { href: "/admin/finance/expenses",     label: "Expenses",   icon: TrendingDown },
+  { href: "/admin/finance/contracts",    label: "Contracts",  icon: FileText },
+  { href: "/admin/security",             label: "Security",   icon: Shield },
 ];
 
 export default async function AdminLayout({

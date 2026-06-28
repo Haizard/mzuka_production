@@ -117,7 +117,10 @@ export default function SecurityPage() {
     setLoading(false);
   }, []);
 
-  useEffect(() => { loadData(); }, [loadData]);
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    loadData();
+  }, [loadData]);
 
   // Gallery permission toggle
   const togglePermission = async (
@@ -143,7 +146,8 @@ export default function SecurityPage() {
   // Update expiry
   const updateExpiry = async (galleryId: string, days: number) => {
     setActionLoading(`${galleryId}-expiry`);
-    const expiresAt = days === 0 ? null : new Date(Date.now() + days * 24 * 60 * 60 * 1000);
+    const now = new Date();
+    const expiresAt = days === 0 ? null : new Date(now.getTime() + days * 24 * 60 * 60 * 1000);
     await updateGalleryPermissionsAction(galleryId, { expiresAt });
     await loadData();
     setActionLoading(null);
@@ -253,7 +257,7 @@ export default function SecurityPage() {
                     This platform applies CSS-based screenshot deterrence and dynamic watermarks on all preview images.
                     These measures significantly increase the cost of unauthorized copying but <strong>cannot fully prevent</strong> a
                     person photographing the screen with another device.
-                    Dynamic watermarks embed the client's name and email into every preview —
+                    Dynamic watermarks embed the client&apos;s name and email into every preview —
                     any leaked image can be traced back to the recipient.
                   </p>
                 </div>

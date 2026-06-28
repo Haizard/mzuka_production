@@ -209,19 +209,19 @@ Required work:
 
 Goal: manage the studio work after booking.
 
-Status: Not started
+Status: Complete
 
 Required work:
 
-- [ ] Project dashboard
-- [ ] Production pipeline statuses
-- [ ] Editing queue
-- [ ] Staff assignment
-- [ ] Calendar management
-- [ ] Task management
-- [ ] Internal notes
-- [ ] Client communication history
-- [ ] Delivery status
+- [x] Project dashboard
+- [x] Production pipeline statuses
+- [x] Editing queue
+- [x] Staff assignment
+- [x] Calendar management
+- [x] Task management
+- [x] Internal notes
+- [x] Client communication history
+- [x] Delivery status
 
 ### Phase 4: Finance And Business Operations
 
@@ -829,3 +829,134 @@ Work completed:
 Commands/checks:
 - `npm run build` passed — 20 routes, no warnings
 - `npm test` passed — 70/70 tests green
+
+### 2026-06-27 — Phase 3: Production Management
+
+Agent: Kiro
+
+Work completed:
+
+**Schema — 5 new DB tables**
+- `Project` — links a booking to a production pipeline stage, shoot date, edit due date, delivery timestamp
+- `StaffAssignment` — many-to-many: staff users assigned to a project with a role label
+- `ProjectTask` — per-project task list with status (TODO/IN_PROGRESS/DONE), assignee, and due date
+- `ProjectNote` — internal notes by admin/staff, timestamped with author
+- `ClientCommunication` — log of all messages sent to the client for a project (auto-populated by messages lib)
+- Migration applied to Supabase via `prisma db push`; client regenerated
+
+**Production Dashboard (`/admin/production`)**
+- Stats row: total, shooting, editing, review, delivered, overdue
+- Stage filter buttons
+- Project cards: stage badge, overdue flag, paid status, task progress, staff names
+- New Project modal: select confirmed booking, set shoot date, edit due date, notes
+
+**Project Detail (`/admin/production/[id]`)**
+- Pipeline strip: click any stage to advance the project
+- 4 tabs: Overview, Tasks, Notes, Communications
+- Overview: booking details panel + production dates + staff assignment (add/remove with role)
+- Tasks: add task with title/assignee/due date, cycle through TODO→IN_PROGRESS→DONE by clicking, delete
+- Notes: add/delete internal notes with author attribution
+- Communications: read-only log of all messages sent to the client
+
+**Calendar (`/admin/production/calendar`)**
+- Month grid with prev/next navigation and Today button
+- Blue chips: booking sessions with time
+- Violet chips: edit deadlines
+- Click any day to see full event detail panel on the right
+- Links from events to booking or project detail
+
+**Delivery Status (`/admin/production/delivery`)**
+- Summary stats: total, delivered, pending, overdue
+- Filter: all / pending / delivered
+- Per-project table: stage, gallery stats (released/total), payment status, expiry, progress bar
+- Mark Delivered button with confirmation — sets stage to DELIVERED and timestamps deliveredAt
+- Quick link to Security/Permissions for gallery access control
+
+Commands/checks:
+- `npm run build` passed — 24 routes clean
+- `npm test` passed — 70/70 tests green
+
+### 2026-06-27 — Supabase power setup + RLS hardening
+
+Agent: Kiro
+
+Work completed:
+
+**Supabase CLI**
+- Installed Supabase CLI v2.108.0 at `~/.local/share/supabase/` (no root required)
+- Added `~/.local/share/supabase` to `~/.bashrc` PATH permanently
+- Logged in to Supabase account, linked project `mzuka_production` (ref: `ffyawwrdgcqgwkmjuvya`, West EU Ireland)
+- Ran `supabase init --yes` — created `supabase/` directory in project root
+
+**Environment cleanup**
+- Standardised `.env`: removed loose keys (`anon_public`, `service_role`, etc.)
+- Added proper keys: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `SESSION_POOLER_URL`
+
+**MCP connection**
+- Updated `~/.kiro/settings/mcp.json` to scope Supabase MCP server to project ref (`?project_ref=ffyawwrdgcqgwkmjuvya`)
+- MCP server fully connected — live database access confirmed (19 tables, 3 users, 6 bookings)
+
+**Row Level Security (RLS)**
+- Enabled RLS on all 19 tables via 9 applied migrations
+- Added `service_role_all` bypass policy on every table — Prisma (running as service_role) retains full access
+- `anon` and `authenticated` roles are blocked by default (no policies = no access)
+- Security advisor confirms zero outstanding RLS warnings
+- All 9 migrations synced locally via `supabase migration fetch --yes` into `supabase/migrations/`
+
+Commands/checks:
+- `supabase projects list` — confirmed project link
+- `supabase migration fetch --yes` — 9 migrations synced
+- MCP `get_advisors(type: "security")` — zero lints
+- `npm run build` passed — 24 routes clean
+
+
+### 2026-06-27 — Phase 4: Finance & Business Operations
+
+Agent: Kiro
+
+Work completed:
+
+**Database — 4 new tables via Supabase MCP migration**
+- `Invoice` — client invoices with status (DRAFT/SENT/PAID/OVERDUE/CANCELLED), line items, tax, due date, paid timestamp
+- `InvoiceItem` — line items belonging to an invoice (description, qty, unit price)
+- `Expense` — studio expenses with 8 categories (EQUIPMENT/TRAVEL/EDITING/MARKETING/SOFTWARE/VENUE/STAFF/OTHER), optional booking link
+- `Contract` — digital agreements with status (DRAFT/SENT/SIGNED/EXPIRED/CANCELLED), full contract body, expiry, signed timestamp
+- RLS enabled + service_role bypass policy on all 4 new tables
+- Prisma schema updated with new models + back-relations on User and Booking
+- `prisma generate` re-run to update client types
+
+**Finance Dashboard (`/admin/finance`)**
+- KPI cards: Total Revenue, Total Expenses, Net Profit, Year Revenue
+- Invoice status counters: unpaid, overdue, paid
+- Quick links to Invoices, Expenses, Contracts sub-pages
+- Recent payments feed with client name and booking title
+
+**Invoices (`/admin/finance/invoices`)**
+- Filter by status (ALL/DRAFT/SENT/PAID/OVERDUE/CANCELLED)
+- Expandable accordion rows with full line-item table, subtotal/tax/total
+- Status actions: Mark Sent, Mark Paid, Mark Overdue, Cancel, Delete
+- New Invoice modal: client + booking selector, dynamic line items (add/remove), tax %, due date, notes
+- Auto-generated invoice number (MG-YYYY-NNNN)
+
+**Expenses (`/admin/finance/expenses`)**
+- Category breakdown cards (click to filter) with total per category + count
+- Full sortable expense table with category badge, booking link, date, amount
+- Record Expense modal: category, description, amount, date, optional booking link
+- Running total in page header
+
+**Contracts (`/admin/finance/contracts`)**
+- Stats row: All / Draft / Sent / Signed / Expired counts
+- Expandable accordion with full contract body preview (monospace)
+- Status actions: Mark Sent, Mark Signed, Mark Expired, Cancel, Delete
+- New Contract modal: client + booking selector, title, full editable body
+- Pre-filled luxury MG service agreement template
+
+**Admin Layout**
+- Added 4 new nav items: Finance, Invoices, Expenses, Contracts with Lucide icons
+
+Commands/checks:
+- MCP `apply_migration` — phase4_finance_schema applied to Supabase
+- `npx prisma generate` passed
+- `supabase migration fetch --yes` — migration synced locally
+- `npm run build` passed — 28 routes clean, zero TypeScript errors
+

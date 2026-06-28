@@ -11,7 +11,7 @@ import {
 import {
   getProjectById,
   updateProjectStageAction,
-  updateProjectAction,
+
   createTaskAction,
   updateTaskStatusAction,
   deleteTaskAction,
@@ -83,7 +83,10 @@ export default function ProjectDetailPage() {
     setLoading(false);
   }, [id]);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    load();
+  }, [load]);
 
   const advanceStage = async (stage: Stage) => {
     setStageLoading(true);

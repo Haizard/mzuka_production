@@ -364,3 +364,112 @@ export async function getProductionStats() {
     return { success: false, error: "Failed to load stats" };
   }
 }
+
+// ── Calendar ──────────────────────────────────────────────────────────────────
+
+/**
+ * Returns all bookings and projects for a given month, shaped for the calendar.
+ * month is 1-indexed (1 = January).
+ */
+export async function getCalendarEvents(year: number, month: number) {
+  try {
+    await requireAdmin();
+
+    const start = new Date(year, month - 1, 1);
+    const end   = new Date(year, month, 0, 23, 59, 59); // last day of month
+
+    const [bookings, projects] = await Promise.all([
+      prisma.booking.findMany({
+        where: {
+          scheduledAt: { gte: start, lte: end },
+          status: { notIn: ["CANCELLED"] },
+        },
+        include: {
+          client: { select: { id: true, name: true } },
+          package: { select: { name: true } },
+          project: { select: { id: true, stage: true } },
+        },
+        orderBy: { scheduledAt: "asc" },
+      }),
+      prisma.project.findMany({
+        where: {
+          OR: [
+            { shootDate:   { gte: start, lte: end } },
+            { editDueDate: { gte: start, lte: end } },
+          ],
+        },
+        include: {
+          booking: { select: { id: true, title: true, serviceType: true } },
+        },
+      }),
+    ]);
+
+    return { success: true, bookings, projects };
+  } catch (error) {
+    console.error("Failed to fetch calendar events:", error);
+    return { success: false, error: "Failed to load calendar", bookings: [], projects: [] };
+  }
+}
+
+// ── Delivery status ───────────────────────────────────────────────────────────
+
+/** Mark a project as delivered and timestamp it */
+export async function markDeliveredAction(projectId: string) {
+  try {
+    const admin = await requireAdmin();
+
+    const project = await prisma.project.update({
+      where: { id: projectId },
+      data: { stage: "DELIVERED", deliveredAt: new Date() },
+      include: { booking: { include: { client: true } } },
+    });
+
+    await prisma.auditLog.create({
+      data: {
+        actorId: admin.id,
+        action: "MEDIA_RELEASED",
+        entity: "Project",
+        entityId: projectId,
+        metadata: { deliveredAt: project.deliveredAt },
+      },
+    });
+
+    return { success: true, project };
+  } catch (error) {
+    console.error("Failed to mark delivered:", error);
+    return { success: false, error: "Failed to mark as delivered" };
+  }
+}
+
+/** Get delivery summary — all projects with delivery info */
+export async function getDeliveryStatus() {
+  try {
+    await requireAdmin();
+
+    const projects = await prisma.project.findMany({
+      include: {
+        booking: {
+          include: {
+            client: { select: { id: true, name: true, email: true } },
+            package: { select: { name: true } },
+            gallery: {
+              select: {
+                id: true,
+                isDownloadOpen: true,
+                expiresAt: true,
+                mediaAssets: { select: { id: true, releaseStatus: true } },
+              },
+            },
+            payments: { select: { status: true, amountCents: true } },
+          },
+        },
+      },
+      orderBy: { createdAt: "desc" },
+    });
+
+    return { success: true, projects };
+  } catch (error) {
+    console.error("Failed to fetch delivery status:", error);
+    return { success: false, error: "Failed to load delivery status", projects: [] };
+  }
+}

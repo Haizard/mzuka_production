@@ -85,7 +85,10 @@ export default function ProductionPage() {
     setLoading(false);
   }, []);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    load();
+  }, [load]);
 
   const filtered = filter === "ALL" ? projects : projects.filter((p) => p.stage === filter);
 

@@ -98,6 +98,8 @@ model User {
   assignedTasks   ProjectTask[]    @relation("TaskAssignee")
   projectNotes    ProjectNote[]    @relation("NoteAuthor")
   clientComms     ClientCommunication[] @relation("CommUser")
+  invoices        Invoice[]        @relation("ClientInvoices")
+  contracts       Contract[]       @relation("ClientContracts")
 }
 
 model ClientApproval {
@@ -144,6 +146,9 @@ model Booking {
   payments      Payment[]
   reminders     BookingReminder[]
   project       Project?
+  invoices      Invoice[]
+  expenses      Expense[]
+  contracts     Contract[]
 }
 
 model BookingReminder {
@@ -262,6 +267,95 @@ model AuditLog {
   ipAddress String?
   createdAt DateTime    @default(now())
   actor     User?       @relation(fields: [actorId], references: [id])
+}
+
+// ── Phase 4: Finance & Business Operations ────────────────────────────────────
+
+enum InvoiceStatus {
+  DRAFT
+  SENT
+  PAID
+  OVERDUE
+  CANCELLED
+}
+
+enum ExpenseCategory {
+  EQUIPMENT
+  TRAVEL
+  EDITING
+  MARKETING
+  SOFTWARE
+  VENUE
+  STAFF
+  OTHER
+}
+
+enum ContractStatus {
+  DRAFT
+  SENT
+  SIGNED
+  EXPIRED
+  CANCELLED
+}
+
+model Invoice {
+  id            String        @id @default(cuid())
+  bookingId     String?
+  clientId      String
+  number        String        @unique
+  status        InvoiceStatus @default(DRAFT)
+  subtotalCents Int           @default(0)
+  taxCents      Int           @default(0)
+  totalCents    Int           @default(0)
+  currency      String        @default("USD")
+  notes         String?
+  dueAt         DateTime?
+  paidAt        DateTime?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  booking       Booking?      @relation(fields: [bookingId], references: [id], onDelete: SetNull)
+  client        User          @relation("ClientInvoices", fields: [clientId], references: [id])
+  items         InvoiceItem[]
+}
+
+model InvoiceItem {
+  id          String   @id @default(cuid())
+  invoiceId   String
+  description String
+  quantity    Int      @default(1)
+  unitCents   Int      @default(0)
+  totalCents  Int      @default(0)
+  createdAt   DateTime @default(now())
+  invoice     Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+}
+
+model Expense {
+  id          String          @id @default(cuid())
+  category    ExpenseCategory @default(OTHER)
+  description String
+  amountCents Int             @default(0)
+  currency    String          @default("USD")
+  receiptUrl  String?
+  bookingId   String?
+  recordedAt  DateTime        @default(now())
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+  booking     Booking?        @relation(fields: [bookingId], references: [id], onDelete: SetNull)
+}
+
+model Contract {
+  id        String         @id @default(cuid())
+  bookingId String?
+  clientId  String
+  title     String
+  body      String
+  status    ContractStatus @default(DRAFT)
+  signedAt  DateTime?
+  expiresAt DateTime?
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+  booking   Booking?       @relation(fields: [bookingId], references: [id], onDelete: SetNull)
+  client    User           @relation("ClientContracts", fields: [clientId], references: [id])
 }
 
 // ── Phase 3: Production Management ───────────────────────────────────────────
