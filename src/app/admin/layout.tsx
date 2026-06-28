@@ -1,36 +1,35 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import {
-  LayoutDashboard,
-  CalendarDays,
-  GalleryHorizontalEnd,
-  UserCheck,
-  Package,
-  Shield,
-  Clapperboard,
-  CalendarRange,
-  Truck,
-  DollarSign,
-  Receipt,
-  TrendingDown,
-  FileText,
+  LayoutDashboard, CalendarDays, GalleryHorizontalEnd, UserCheck,
+  Package, Shield, Clapperboard, CalendarRange, Truck,
+  DollarSign, Receipt, TrendingDown, FileText,
+  Bot, BarChart2, ImageIcon, ClipboardList,
+  BookOpen, Users, Scale, Crown,
 } from "lucide-react";
 import { requireAdmin } from "@/lib/auth";
 
-const navItems = [
-  { href: "/admin",                      label: "Dashboard",  icon: LayoutDashboard },
-  { href: "/admin/approvals",            label: "Approvals",  icon: UserCheck },
-  { href: "/admin/bookings",             label: "Bookings",   icon: CalendarDays },
-  { href: "/admin/packages",             label: "Packages",   icon: Package },
-  { href: "/admin/galleries",            label: "Galleries",  icon: GalleryHorizontalEnd },
-  { href: "/admin/production",           label: "Production", icon: Clapperboard },
-  { href: "/admin/production/calendar",  label: "Calendar",   icon: CalendarRange },
-  { href: "/admin/production/delivery",  label: "Delivery",   icon: Truck },
-  { href: "/admin/finance",              label: "Finance",    icon: DollarSign },
-  { href: "/admin/finance/invoices",     label: "Invoices",   icon: Receipt },
-  { href: "/admin/finance/expenses",     label: "Expenses",   icon: TrendingDown },
-  { href: "/admin/finance/contracts",    label: "Contracts",  icon: FileText },
-  { href: "/admin/security",             label: "Security",   icon: Shield },
+const baseNavItems = [
+  { href: "/admin",                     label: "Dashboard",    icon: LayoutDashboard },
+  { href: "/admin/approvals",           label: "Approvals",    icon: UserCheck },
+  { href: "/admin/bookings",            label: "Bookings",     icon: CalendarDays },
+  { href: "/admin/packages",            label: "Packages",     icon: Package },
+  { href: "/admin/galleries",           label: "Galleries",    icon: GalleryHorizontalEnd },
+  { href: "/admin/production",          label: "Production",   icon: Clapperboard },
+  { href: "/admin/production/calendar", label: "Calendar",     icon: CalendarRange },
+  { href: "/admin/production/delivery", label: "Delivery",     icon: Truck },
+  { href: "/admin/finance",             label: "Finance",      icon: DollarSign },
+  { href: "/admin/finance/invoices",    label: "Invoices",     icon: Receipt },
+  { href: "/admin/finance/expenses",    label: "Expenses",     icon: TrendingDown },
+  { href: "/admin/finance/contracts",   label: "Contracts",    icon: FileText },
+  { href: "/admin/ai",                  label: "AI Assistant", icon: Bot },
+  { href: "/admin/analytics",           label: "Analytics",    icon: BarChart2 },
+  { href: "/admin/media-library",       label: "Media Library",icon: ImageIcon },
+  { href: "/admin/reports",             label: "Reports",      icon: ClipboardList },
+  { href: "/admin/academy",             label: "Academy",      icon: BookOpen },
+  { href: "/admin/employees",           label: "Employees",    icon: Users },
+  { href: "/admin/legal",               label: "Legal",        icon: Scale },
+  { href: "/admin/security",            label: "Security",     icon: Shield },
 ];
 
 export default async function AdminLayout({
@@ -38,11 +37,17 @@ export default async function AdminLayout({
 }: {
   children: React.ReactNode;
 }) {
+  let user = null;
   try {
-    await requireAdmin();
+    user = await requireAdmin();
   } catch {
     redirect("/login");
   }
+
+  const navItems = [
+    ...baseNavItems,
+    ...(user?.role === "FOUNDER" ? [{ href: "/admin/founder", label: "Founder HQ", icon: Crown }] : []),
+  ];
 
   return (
     <div className="min-h-dvh bg-[var(--background)] text-white">

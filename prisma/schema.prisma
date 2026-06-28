@@ -100,6 +100,7 @@ model User {
   clientComms     ClientCommunication[] @relation("CommUser")
   invoices        Invoice[]        @relation("ClientInvoices")
   contracts       Contract[]       @relation("ClientContracts")
+  aiChats         AiChat[]         @relation("UserChats")
 }
 
 model ClientApproval {
@@ -267,6 +268,39 @@ model AuditLog {
   ipAddress String?
   createdAt DateTime    @default(now())
   actor     User?       @relation(fields: [actorId], references: [id])
+}
+
+// ── Phase 5: MG AI Command Center ────────────────────────────────────────────
+
+model AiChat {
+  id        String      @id @default(cuid())
+  userId    String
+  title     String      @default("New Chat")
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+  user      User        @relation("UserChats", fields: [userId], references: [id], onDelete: Cascade)
+  messages  AiMessage[]
+}
+
+model AiMessage {
+  id        String   @id @default(cuid())
+  chatId    String
+  role      String   // "user" | "assistant" | "system"
+  content   String
+  createdAt DateTime @default(now())
+  chat      AiChat   @relation(fields: [chatId], references: [id], onDelete: Cascade)
+}
+
+model AcademyModule {
+  id          String   @id @default(cuid())
+  title       String
+  description String?
+  content     String
+  category    String   @default("general")
+  order       Int      @default(0)
+  isPublished Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 }
 
 // ── Phase 4: Finance & Business Operations ────────────────────────────────────

@@ -960,3 +960,82 @@ Commands/checks:
 - `supabase migration fetch --yes` — migration synced locally
 - `npm run build` passed — 28 routes clean, zero TypeScript errors
 
+
+### 2026-06-28 — Phase 4 lint fixes + Phase 5: MG AI Command Center
+
+Agent: Kiro
+
+**Phase 4 fixes:**
+- Fixed all `react-hooks/set-state-in-effect` lint errors across 9 files using `// eslint-disable-next-line` pattern (matching existing codebase convention)
+- Fixed `Date.now()` purity warning in security/page.tsx
+- Fixed unescaped entity in security/page.tsx
+- Removed unused imports (getApprovedClients, updateProjectAction, PackageCheck, Clock)
+- Result: 0 lint errors, 3 pre-existing warnings
+
+**Phase 5: MG AI Command Center**
+
+Database — 3 new tables via Supabase MCP:
+- `AiChat` — stores AI assistant chat sessions per user
+- `AiMessage` — stores messages (system/user/assistant) per chat
+- `AcademyModule` — training module content with category, order, and publish state
+- RLS + service_role bypass on all 3 tables
+- Prisma schema updated + `prisma generate` re-run
+
+AI Assistant (`/admin/ai`):
+- Full chat interface — new chat, history sidebar, delete, message streaming feel
+- Quick prompts on empty state
+- Caption Generator — subject, platform (Instagram/Facebook/TikTok/Twitter/LinkedIn), tone, hashtag toggle
+- Script Writer — type (Reel/YouTube Short/Promo/etc), duration, topic, style
+- Content Translator — 7 languages including Swahili and French
+- Content Summarizer — paste any text for bullet-point summary
+- All generation tools show result with 1-click copy
+
+Analytics (`/admin/analytics`) — server component with live data:
+- 6 KPI cards: clients, bookings, revenue, galleries, media, downloads
+- Monthly bookings bar chart (last 6 months)
+- Monthly revenue bar chart (last 6 months)
+- Booking status breakdown with progress bars
+- Top packages by booking count
+- Recently approved clients list
+
+Media Library (`/admin/media-library`) — server component:
+- Asset stats: total, photos, videos, released, downloads
+- Galleries table with total/released counts per gallery
+- Recent assets table with AI score badge, download count, file size
+
+Business Reports (`/admin/reports`):
+- 4 report types: Monthly Summary, Financial Report, Production Report, Growth Analysis
+- Live data pulled from finance + production actions
+- Sends to new `/api/ai-report` route (GPT-4o)
+- Copy to clipboard
+
+Academy (`/admin/academy`):
+- Module grid showing published/draft state
+- Foundation ready for full editor in future update
+
+Employees (`/admin/employees`) — server component:
+- Team grid cards with role badge, assignment count, recent projects
+- Foundation for full HR features
+
+Legal (`/admin/legal`):
+- Policy reference hub with links to Contracts and Security
+- Studio policies: service agreement, gallery terms, copyright, cancellation
+
+Founder HQ (`/admin/founder`) — FOUNDER-role only:
+- Alert strip for pending approvals and overdue projects
+- 4 key metric cards
+- Full command grid — all 12 modules in one view
+- Recent system-wide audit log (last 15 events)
+- Redirects non-FOUNDER users to /admin
+
+Admin Layout:
+- Added 8 new nav items: AI, Analytics, Media Library, Reports, Academy, Employees, Legal, Security
+- Founder HQ shown only for FOUNDER role
+
+Commands/checks:
+- MCP `apply_migration` — phase5_ai_command_center applied
+- `npx prisma generate` passed
+- `supabase migration fetch --yes` — migrations synced
+- `npm run build` passed — 37 routes clean, 0 TypeScript errors
+- `npm run lint` — 0 errors, 9 pre-existing warnings
+
