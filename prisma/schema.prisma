@@ -101,6 +101,11 @@ model User {
   invoices        Invoice[]        @relation("ClientInvoices")
   contracts       Contract[]       @relation("ClientContracts")
   aiChats         AiChat[]         @relation("UserChats")
+  isProductionManager Boolean      @default(false)
+  equipmentAssignments EquipmentAssignment[] @relation("EquipmentAssignee")
+  equipmentReturnsRequested EquipmentReturn[] @relation("ReturnRequester")
+  equipmentReturnsReviewed  EquipmentReturn[] @relation("ReturnReviewer")
+  uploadedAssets  MediaAsset[]     @relation("UploadedByStaff")
 }
 
 model ClientApproval {
@@ -195,6 +200,8 @@ model MediaAsset {
   gallery        Gallery            @relation(fields: [galleryId], references: [id])
   aiAnalysis     AiAnalysis?
   downloads      Download[]
+  uploadedByStaffId String?
+  uploadedBy     User?              @relation("UploadedByStaff", fields: [uploadedByStaffId], references: [id], onDelete: SetNull)
 }
 
 model AiAnalysis {
@@ -434,6 +441,7 @@ model ProjectTask {
   updatedAt   DateTime   @updatedAt
   project     Project    @relation(fields: [projectId], references: [id], onDelete: Cascade)
   assignee    User?      @relation("TaskAssignee", fields: [assigneeId], references: [id])
+  equipmentAssignments EquipmentAssignment[]
 }
 
 model ProjectNote {
@@ -457,4 +465,78 @@ model ClientCommunication {
   createdAt DateTime @default(now())
   project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
   user      User     @relation("CommUser", fields: [userId], references: [id])
+}
+
+// ── Equipment Management ──────────────────────────────────────────────────────
+
+enum EquipmentStatus {
+  AVAILABLE
+  ASSIGNED
+  UNDER_MAINTENANCE
+  RETIRED
+}
+
+enum ConditionStatus {
+  EXCELLENT
+  GOOD
+  FAIR
+  DAMAGED
+}
+
+enum ReturnRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model EquipmentCategory {
+  id        String          @id @default(cuid())
+  name      String          @unique
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
+  items     EquipmentItem[]
+}
+
+model EquipmentItem {
+  id           String              @id @default(cuid())
+  name         String
+  categoryId   String
+  serialNumber String?             @unique
+  condition    ConditionStatus     @default(GOOD)
+  status       EquipmentStatus     @default(AVAILABLE)
+  notes        String?
+  createdAt    DateTime            @default(now())
+  updatedAt    DateTime            @updatedAt
+  category     EquipmentCategory   @relation(fields: [categoryId], references: [id])
+  assignments  EquipmentAssignment[]
+}
+
+model EquipmentAssignment {
+  id          String    @id @default(cuid())
+  itemId      String
+  taskId      String
+  assigneeId  String
+  assignedAt  DateTime  @default(now())
+  returnedAt  DateTime?
+  createdAt   DateTime  @default(now())
+  item        EquipmentItem  @relation(fields: [itemId], references: [id])
+  task        ProjectTask    @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  assignee    User           @relation("EquipmentAssignee", fields: [assigneeId], references: [id])
+  returns     EquipmentReturn[]
+}
+
+model EquipmentReturn {
+  id              String              @id @default(cuid())
+  assignmentId    String
+  requestedById   String
+  status          ReturnRequestStatus @default(PENDING)
+  returnNote      String?
+  rejectionReason String?
+  reviewedById    String?
+  reviewedAt      DateTime?
+  submittedAt     DateTime            @default(now())
+  createdAt       DateTime            @default(now())
+  assignment      EquipmentAssignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  requestedBy     User                @relation("ReturnRequester", fields: [requestedById], references: [id])
+  reviewedBy      User?               @relation("ReturnReviewer", fields: [reviewedById], references: [id])
 }

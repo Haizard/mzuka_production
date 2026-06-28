@@ -1,17 +1,21 @@
 "use server";
 
+import { redirect } from "next/navigation";
 import { requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/db";
-import { Users, CalendarDays, Briefcase } from "lucide-react";
+import { Users, CalendarDays, Briefcase, ShieldCheck } from "lucide-react";
+import { EmployeeActions } from "./employee-actions";
 
 async function getEmployeeData() {
-  await requireAdmin();
+  const admin = await requireAdmin();
+  if (!["FOUNDER","ADMIN"].includes(admin.role)) redirect("/admin");
 
   const [staff, assignments] = await Promise.all([
     prisma.user.findMany({
-      where: { role: { in: ["FOUNDER", "ADMIN", "STAFF"] }, approvalStatus: "APPROVED" },
+      where: { role: { in: ["FOUNDER","ADMIN","STAFF"] }, approvalStatus: "APPROVED" },
       select: {
-        id: true, name: true, email: true, phone: true, role: true, createdAt: true,
+        id: true, name: true, email: true, phone: true, role: true,
+        isProductionManager: true, createdAt: true,
         staffAssignments: {
           include: { project: { select: { id: true, stage: true, booking: { select: { title: true } } } } },
           orderBy: { createdAt: "desc" },
@@ -20,10 +24,7 @@ async function getEmployeeData() {
       },
       orderBy: { createdAt: "asc" },
     }),
-    prisma.staffAssignment.groupBy({
-      by: ["staffId"],
-      _count: { id: true },
-    }),
+    prisma.staffAssignment.groupBy({ by: ["staffId"], _count: { id: true } }),
   ]);
 
   const assignmentMap = Object.fromEntries(assignments.map((a) => [a.staffId, a._count.id]));
@@ -51,7 +52,7 @@ export default async function EmployeesPage() {
           <Users className="h-6 w-6 text-[var(--gold)]" />
           Employee Management
         </h2>
-        <p className="mt-1 text-sm text-zinc-400">Team members, roles, and project assignments</p>
+        <p className="mt-1 text-sm text-zinc-400">Team members, roles, project assignments, and Production Manager designation</p>
       </div>
 
       {/* Stats */}
@@ -65,8 +66,10 @@ export default async function EmployeesPage() {
           <p className="text-sm text-zinc-400 mt-1">Staff</p>
         </div>
         <div className="rounded-lg border border-white/10 bg-[var(--surface)] p-5">
-          <p className="text-3xl font-bold text-white">{Object.values(assignmentMap).reduce((s, n) => s + n, 0)}</p>
-          <p className="text-sm text-zinc-400 mt-1">Total Assignments</p>
+          <p className="text-3xl font-bold text-violet-400">
+            {staff.filter((s) => s.role === "STAFF" && s.isProductionManager).length}
+          </p>
+          <p className="text-sm text-zinc-400 mt-1">Production Managers</p>
         </div>
       </div>
 
@@ -93,8 +96,16 @@ export default async function EmployeesPage() {
                 </span>
               </div>
 
+              {/* Production Manager badge */}
+              {member.isProductionManager && (
+                <div className="mb-3 flex items-center gap-1.5 text-xs text-violet-300 bg-violet-500/10 px-2 py-1 rounded-full w-fit">
+                  <ShieldCheck className="h-3.5 w-3.5" />
+                  Production Manager
+                </div>
+              )}
+
               {/* Details */}
-              <div className="space-y-2 text-sm">
+              <div className="space-y-2 text-sm mb-4">
                 {member.phone && (
                   <div className="flex justify-between">
                     <span className="text-zinc-500">Phone</span>
@@ -113,7 +124,7 @@ export default async function EmployeesPage() {
 
               {/* Recent assignments */}
               {member.staffAssignments.length > 0 && (
-                <div className="mt-4 pt-4 border-t border-white/10">
+                <div className="pt-3 border-t border-white/10 mb-4">
                   <p className="text-xs text-zinc-500 mb-2">Recent assignments</p>
                   {member.staffAssignments.map((a) => (
                     <div key={a.id} className="flex items-center gap-2 text-xs text-zinc-400 mb-1">
@@ -126,12 +137,20 @@ export default async function EmployeesPage() {
                   ))}
                 </div>
               )}
+
+              {/* PM toggle — only for STAFF role */}
+              {member.role === "STAFF" && (
+                <EmployeeActions
+                  staffId={member.id}
+                  isProductionManager={member.isProductionManager}
+                />
+              )}
             </div>
           ))}
         </div>
       )}
 
-      {/* Coming soon notice */}
+      {/* Coming soon */}
       <div className="rounded-lg border border-white/10 bg-[var(--surface)] p-5">
         <div className="flex gap-3">
           <CalendarDays className="h-5 w-5 text-zinc-500 shrink-0 mt-0.5" />

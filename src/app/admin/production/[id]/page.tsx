@@ -6,12 +6,11 @@ import Link from "next/link";
 import {
   ArrowLeft, Camera, Scissors, Eye, PackageCheck, Archive, Film,
   Plus, Trash2, CheckSquare, Square, UserPlus, UserMinus,
-  MessageSquare, Clock, RefreshCw, ChevronDown,
+  MessageSquare, Clock, RefreshCw, ChevronDown, Package,
 } from "lucide-react";
 import {
   getProjectById,
   updateProjectStageAction,
-
   createTaskAction,
   updateTaskStatusAction,
   deleteTaskAction,
@@ -21,17 +20,23 @@ import {
   removeStaffAssignmentAction,
   getStaffMembers,
 } from "../actions";
+import { assignEquipmentAction, getTaskEquipmentAction, getEquipmentItemsAction } from "@/app/admin/equipment/actions";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 type Stage = "SHOOTING" | "CULLING" | "EDITING" | "REVIEW" | "DELIVERED" | "ARCHIVED";
 type TaskStatus = "TODO" | "IN_PROGRESS" | "DONE";
 
+interface EquipAssignment {
+  id: string; assignedAt: Date;
+  item: { id: string; name: string; serialNumber: string | null; category: { name: string } };
+}
 interface Task { id: string; title: string; description: string | null; status: TaskStatus; dueAt: Date | null; assignee: { id: string; name: string } | null }
 interface Note { id: string; body: string; createdAt: Date; author: { id: string; name: string; role: string } }
 interface Assignment { id: string; role: string; staff: { id: string; name: string; email: string; role: string } }
 interface Comm { id: string; channel: string; subject: string; body: string; sentAt: Date | null; createdAt: Date; user: { id: string; name: string } }
 interface StaffMember { id: string; name: string; email: string; role: string }
+interface EquipItem { id: string; name: string; category: { name: string }; status: string }
 interface Project {
   id: string; stage: Stage; shootDate: Date | null; editDueDate: Date | null; deliveredAt: Date | null; notes: string | null;
   booking: { id: string; title: string; serviceType: string; scheduledAt: Date; location: string | null; client: { id: string; name: string; email: string; phone: string | null }; package: { name: string; priceCents: number } | null; payments: { status: string; amountCents: number }[]; gallery: { id: string; mediaAssets: { id: string }[] } | null };
@@ -76,10 +81,23 @@ export default function ProjectDetailPage() {
   const [stageLoading, setStageLoading] = useState(false);
   const [saving, setSaving] = useState(false);
 
+  // Equipment state
+  const [equipItems, setEquipItems]   = useState<EquipItem[]>([]);
+  const [taskEquip, setTaskEquip]     = useState<Record<string, EquipAssignment[]>>({});
+  const [assignEquipTaskId, setAssignEquipTaskId] = useState<string | null>(null);
+  const [selectedEquipId, setSelectedEquipId]     = useState("");
+  const [assigningEquip, setAssigningEquip]        = useState(false);
+  const [equipMsg, setEquipMsg]                    = useState<string | null>(null);
+
   const load = useCallback(async () => {
-    const [pRes, sRes] = await Promise.all([getProjectById(id), getStaffMembers()]);
+    const [pRes, sRes, eRes] = await Promise.all([
+      getProjectById(id),
+      getStaffMembers(),
+      getEquipmentItemsAction({ status: "AVAILABLE" }),
+    ]);
     if (pRes.success && pRes.project) setProject(pRes.project as unknown as Project);
     if (sRes.success) setStaff(sRes.staff);
+    if (eRes.success) setEquipItems(eRes.items as unknown as EquipItem[]);
     setLoading(false);
   }, [id]);
 
@@ -129,6 +147,28 @@ export default function ProjectDetailPage() {
     setAssignStaffId("");
     await load();
     setSaving(false);
+  };
+
+  const loadTaskEquip = async (taskId: string) => {
+    const res = await getTaskEquipmentAction(taskId);
+    if (res.success) setTaskEquip((p) => ({ ...p, [taskId]: res.assignments as unknown as EquipAssignment[] }));
+  };
+
+  const assignEquip = async () => {
+    if (!assignEquipTaskId || !selectedEquipId) return;
+    setAssigningEquip(true);
+    const res = await assignEquipmentAction({ taskId: assignEquipTaskId, itemId: selectedEquipId });
+    if (res.success) {
+      setEquipMsg("Equipment assigned");
+      setAssignEquipTaskId(null);
+      setSelectedEquipId("");
+      await load();
+      await loadTaskEquip(assignEquipTaskId);
+    } else {
+      setEquipMsg(res.error ?? "Failed to assign equipment");
+    }
+    setAssigningEquip(false);
+    setTimeout(() => setEquipMsg(null), 3000);
   };
 
   if (loading) return <div className="py-20 text-center text-zinc-500">Loading project…</div>;
@@ -301,34 +341,106 @@ export default function ProjectDetailPage() {
           ) : (
             <div className="rounded-lg border border-white/10 bg-[var(--surface)] divide-y divide-white/5">
               {project.tasks.map((task) => (
-                <div key={task.id} className="flex items-center gap-4 p-4">
-                  <button onClick={() => toggleTask(task.id, task.status)} className="shrink-0">
-                    {task.status === "DONE" ? (
-                      <CheckSquare className="h-5 w-5 text-emerald-400" />
-                    ) : task.status === "IN_PROGRESS" ? (
-                      <ChevronDown className="h-5 w-5 text-amber-400" />
-                    ) : (
-                      <Square className="h-5 w-5 text-zinc-600" />
-                    )}
-                  </button>
-                  <div className="flex-1 min-w-0">
-                    <p className={`text-sm font-medium ${task.status === "DONE" ? "line-through text-zinc-500" : "text-white"}`}>
-                      {task.title}
-                    </p>
-                    <div className="flex gap-3 text-xs text-zinc-500 mt-0.5">
-                      {task.assignee && <span>👤 {task.assignee.name}</span>}
-                      {task.dueAt && <span><Clock className="inline h-3 w-3 mr-0.5" />{fmt(task.dueAt)}</span>}
-                      <span className={`capitalize ${task.status === "DONE" ? "text-emerald-500" : task.status === "IN_PROGRESS" ? "text-amber-500" : "text-zinc-500"}`}>
-                        {task.status.replace("_", " ").toLowerCase()}
-                      </span>
+                <div key={task.id} className="p-4">
+                  <div className="flex items-center gap-4">
+                    <button onClick={() => toggleTask(task.id, task.status)} className="shrink-0">
+                      {task.status === "DONE" ? (
+                        <CheckSquare className="h-5 w-5 text-emerald-400" />
+                      ) : task.status === "IN_PROGRESS" ? (
+                        <ChevronDown className="h-5 w-5 text-amber-400" />
+                      ) : (
+                        <Square className="h-5 w-5 text-zinc-600" />
+                      )}
+                    </button>
+                    <div className="flex-1 min-w-0">
+                      <p className={`text-sm font-medium ${task.status === "DONE" ? "line-through text-zinc-500" : "text-white"}`}>
+                        {task.title}
+                      </p>
+                      <div className="flex gap-3 text-xs text-zinc-500 mt-0.5">
+                        {task.assignee && <span>👤 {task.assignee.name}</span>}
+                        {task.dueAt && <span><Clock className="inline h-3 w-3 mr-0.5" />{fmt(task.dueAt)}</span>}
+                        <span className={`capitalize ${task.status === "DONE" ? "text-emerald-500" : task.status === "IN_PROGRESS" ? "text-amber-500" : "text-zinc-500"}`}>
+                          {task.status.replace("_", " ").toLowerCase()}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      {/* Assign equipment button */}
+                      {task.assignee && (
+                        <button
+                          onClick={() => { setAssignEquipTaskId(task.id); setSelectedEquipId(""); loadTaskEquip(task.id); }}
+                          className="flex items-center gap-1 text-xs px-2.5 py-1.5 rounded-lg border border-white/10 text-zinc-400 hover:text-[var(--gold)] hover:border-[var(--gold)]/30 transition"
+                          title="Assign equipment to this task"
+                        >
+                          <Package className="h-3.5 w-3.5" /> Equip
+                        </button>
+                      )}
+                      <button onClick={async () => { await deleteTaskAction(task.id); load(); }}
+                        className="text-zinc-700 hover:text-red-400 transition">
+                        <Trash2 className="h-4 w-4" />
+                      </button>
                     </div>
                   </div>
-                  <button onClick={async () => { await deleteTaskAction(task.id); load(); }}
-                    className="text-zinc-700 hover:text-red-400 transition shrink-0">
-                    <Trash2 className="h-4 w-4" />
-                  </button>
+
+                  {/* Equipment assigned to this task */}
+                  {taskEquip[task.id]?.length > 0 && (
+                    <div className="mt-3 ml-9 space-y-1.5">
+                      {taskEquip[task.id].map((ea) => (
+                        <div key={ea.id} className="flex items-center gap-2 text-xs text-zinc-400 bg-white/5 rounded-lg px-3 py-1.5">
+                          <Package className="h-3 w-3 text-[var(--gold)] shrink-0" />
+                          <span className="font-medium text-zinc-300">{ea.item.name}</span>
+                          <span className="text-zinc-600">· {ea.item.category.name}</span>
+                          {ea.item.serialNumber && <span className="text-zinc-600">· SN:{ea.item.serialNumber}</span>}
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               ))}
+            </div>
+          )}
+
+          {/* Equipment flash message */}
+          {equipMsg && (
+            <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/10 px-4 py-2 text-sm text-emerald-300">
+              {equipMsg}
+            </div>
+          )}
+
+          {/* Assign equipment modal */}
+          {assignEquipTaskId && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
+              <div className="w-full max-w-md rounded-xl border border-white/10 bg-[var(--surface)] p-6">
+                <h3 className="text-lg font-semibold text-white mb-2 flex items-center gap-2">
+                  <Package className="h-5 w-5 text-[var(--gold)]" /> Assign Equipment
+                </h3>
+                <p className="text-sm text-zinc-400 mb-4">
+                  Task: <span className="text-white">{project.tasks.find((t) => t.id === assignEquipTaskId)?.title}</span>
+                </p>
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-xs text-zinc-400 mb-1.5">Available Equipment</label>
+                    <select value={selectedEquipId} onChange={(e) => setSelectedEquipId(e.target.value)}
+                      className="w-full rounded-lg bg-white/5 border border-white/10 px-3 py-2.5 text-sm text-white focus:outline-none focus:border-[var(--gold)]">
+                      <option value="">Select equipment…</option>
+                      {equipItems.map((item) => (
+                        <option key={item.id} value={item.id}>{item.name} ({item.category.name})</option>
+                      ))}
+                    </select>
+                    {equipItems.length === 0 && (
+                      <p className="text-xs text-amber-400 mt-1.5">No available equipment. Add items in Equipment Inventory.</p>
+                    )}
+                  </div>
+                  <div className="flex justify-end gap-3 pt-2">
+                    <button onClick={() => setAssignEquipTaskId(null)}
+                      className="px-4 py-2 rounded-lg border border-white/10 text-sm text-zinc-400 hover:text-white transition">Cancel</button>
+                    <button onClick={assignEquip} disabled={!selectedEquipId || assigningEquip}
+                      className="px-4 py-2 rounded-lg bg-[var(--gold)] text-black text-sm font-semibold disabled:opacity-50 transition">
+                      {assigningEquip ? "Assigning…" : "Assign Equipment"}
+                    </button>
+                  </div>
+                </div>
+              </div>
             </div>
           )}
         </div>

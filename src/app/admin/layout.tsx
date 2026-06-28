@@ -5,7 +5,7 @@ import {
   Package, Shield, Clapperboard, CalendarRange, Truck,
   DollarSign, Receipt, TrendingDown, FileText,
   Bot, BarChart2, ImageIcon, ClipboardList,
-  BookOpen, Users, Scale, Crown,
+  BookOpen, Users, Scale, Crown, Wrench, RotateCcw,
 } from "lucide-react";
 import { requireAdmin } from "@/lib/auth";
 
@@ -28,6 +28,8 @@ const baseNavItems = [
   { href: "/admin/reports",             label: "Reports",      icon: ClipboardList },
   { href: "/admin/academy",             label: "Academy",      icon: BookOpen },
   { href: "/admin/employees",           label: "Employees",    icon: Users },
+  { href: "/admin/equipment",           label: "Equipment",    icon: Wrench },
+  { href: "/admin/equipment/returns",   label: "Returns",      icon: RotateCcw },
   { href: "/admin/legal",               label: "Legal",        icon: Scale },
   { href: "/admin/security",            label: "Security",     icon: Shield },
 ];
