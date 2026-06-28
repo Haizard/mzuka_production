@@ -4,13 +4,66 @@ import { requireApprovedUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import Stripe from "stripe";
 import { scheduleDefaultReminders } from "@/lib/reminders";
+import { PRICING_RULES } from "@/lib/booking-constants";
+import type { DeliveryDeadline } from "@prisma/client";
+
+interface ServicesSelected {
+  photography: string[];
+  video: string[];
+  additional: string[];
+}
+
+interface Deliverables {
+  photos: string[];
+  videos: string[];
+}
+
+interface PhotoSpec {
+  quality: string;
+  editingStyle: string;
+  colorStyle: string;
+}
+
+interface VideoSpec {
+  resolution: string;
+  frameRate: string;
+  orientation: string;
+  style: string;
+}
 
 interface CreateBookingInput {
+  // Basic
+  title: string;
+  eventType: string;
   serviceType: string;
   packageId?: string;
-  title: string;
+  // Event details
   location?: string;
   scheduledAt: string;
+  endTime?: string;
+  guestCount?: number;
+  venueType?: string;
+  // Client extras
+  alternatePhone?: string;
+  organization?: string;
+  billingAddress?: string;
+  // Services & deliverables
+  services?: ServicesSelected;
+  deliverables?: Deliverables;
+  // Specs
+  photoSpec?: PhotoSpec;
+  videoSpec?: VideoSpec;
+  // Crew
+  crewPhotographers?: number;
+  crewVideographers?: number;
+  crewDroneOps?: number;
+  crewAssistants?: number;
+  // Coverage
+  includedHours?: number;
+  // Delivery
+  deliveryDeadline?: "STANDARD" | "EXPRESS" | "URGENT";
+  // Notes
+  specialRequests?: string;
   notes?: string;
 }
 
@@ -18,76 +71,91 @@ export async function createBookingAction(input: CreateBookingInput) {
   try {
     const user = await requireApprovedUser();
 
-    // Validate date
     const scheduledDate = new Date(input.scheduledAt);
     if (isNaN(scheduledDate.getTime())) {
-      return {
-        success: false,
-        error: "Invalid date and time format",
-      };
+      return { success: false, error: "Invalid date and time format" };
     }
 
-    // Validate the package exists if provided
     if (input.packageId) {
-      const pkg = await prisma.servicePackage.findUnique({
-        where: { id: input.packageId },
-      });
-      if (!pkg) {
-        return {
-          success: false,
-          error: "Selected package not found",
-        };
-      }
+      const pkg = await prisma.servicePackage.findUnique({ where: { id: input.packageId } });
+      if (!pkg) return { success: false, error: "Selected package not found" };
     }
 
-    // Create the booking
+    // Calculate delivery fee
+    const deliveryFeeCents =
+      input.deliveryDeadline === "EXPRESS" ? PRICING_RULES.EXPRESS_DELIVERY_CENTS :
+      input.deliveryDeadline === "URGENT"  ? PRICING_RULES.URGENT_DELIVERY_CENTS  : 0;
+
+    // Get package base price for quote
+    let quoteTotalCents = 0;
+    if (input.packageId) {
+      const pkg = await prisma.servicePackage.findUnique({ where: { id: input.packageId }, select: { priceCents: true } });
+      quoteTotalCents = pkg?.priceCents ?? 0;
+    }
+    // Add service add-ons
+    const services = input.services ?? { photography: [], video: [], additional: [] };
+    if (services.additional.includes("drone_photography") || services.video.includes("drone_video")) {
+      quoteTotalCents += PRICING_RULES.DRONE_CENTS;
+    }
+    if (services.additional.includes("live_streaming")) quoteTotalCents += PRICING_RULES.LIVE_STREAM_CENTS;
+    if (services.additional.includes("same_day_edit"))  quoteTotalCents += PRICING_RULES.SAME_DAY_EDIT_CENTS;
+    if (services.additional.includes("photo_booth"))    quoteTotalCents += PRICING_RULES.PHOTO_BOOTH_CENTS;
+    if ((input.crewPhotographers ?? 0) > 1) quoteTotalCents += PRICING_RULES.SECOND_PHOTOGRAPHER_CENTS * ((input.crewPhotographers ?? 1) - 1);
+    quoteTotalCents += deliveryFeeCents;
+
     const booking = await prisma.booking.create({
       data: {
-        clientId: user.id,
-        packageId: input.packageId,
-        serviceType: input.serviceType,
-        title: input.title,
-        location: input.location,
-        scheduledAt: scheduledDate,
-        notes: input.notes,
-        status: "REQUESTED",
-        paymentStatus: "UNPAID",
+        clientId:      user.id,
+        packageId:     input.packageId,
+        serviceType:   input.serviceType,
+        eventType:     input.eventType,
+        title:         input.title,
+        location:      input.location,
+        scheduledAt:   scheduledDate,
+        endTime:       input.endTime ? new Date(input.endTime) : null,
+        guestCount:    input.guestCount ?? null,
+        venueType:     input.venueType ?? null,
+        alternatePhone: input.alternatePhone ?? null,
+        organization:  input.organization ?? null,
+        billingAddress: input.billingAddress ?? null,
+        servicesJson:  services as object,
+        deliverablesJson: (input.deliverables ?? { photos: [], videos: [] }) as object,
+        photoSpecJson: (input.photoSpec ?? {}) as object,
+        videoSpecJson: (input.videoSpec ?? {}) as object,
+        crewPhotographers: input.crewPhotographers ?? 0,
+        crewVideographers: input.crewVideographers ?? 0,
+        crewDroneOps:      input.crewDroneOps ?? 0,
+        crewAssistants:    input.crewAssistants ?? 0,
+        includedHours:     input.includedHours ?? null,
+        overtimeRatePerHour: PRICING_RULES.EXTRA_HOUR_CENTS,
+        deliveryDeadline:  (input.deliveryDeadline ?? "STANDARD") as DeliveryDeadline,
+        deliveryFeeCents,
+        quoteTotalCents,
+        depositPercent: 50,
+        specialRequests: input.specialRequests ?? null,
+        notes:          input.notes ?? null,
+        status:         "REQUESTED",
+        statusV2:       "INQUIRY",
+        paymentStatus:  "UNPAID",
       },
     });
 
-    // Log the action
     await prisma.auditLog.create({
       data: {
-        actorId: user.id,
-        action: "BOOKING_CREATED",
-        entity: "Booking",
+        actorId:  user.id,
+        action:   "BOOKING_CREATED",
+        entity:   "Booking",
         entityId: booking.id,
-        metadata: {
-          serviceType: input.serviceType,
-          title: input.title,
-        },
+        metadata: { serviceType: input.serviceType, title: input.title, quoteTotalCents },
       },
     });
 
-    // Schedule default reminders (7 days, 1 day, 30 minutes before)
-    await scheduleDefaultReminders(
-      booking.id,
-      user.id,
-      scheduledDate,
-      user.email,
-      user.phone || undefined
-    );
+    await scheduleDefaultReminders(booking.id, user.id, scheduledDate, user.email, user.phone || undefined);
 
-    return {
-      success: true,
-      bookingId: booking.id,
-    };
+    return { success: true, bookingId: booking.id };
   } catch (error) {
     console.error("Booking creation error:", error);
-    return {
-      success: false,
-      error: "Failed to create booking. Please try again.",
-    };
+    return { success: false, error: "Failed to create booking. Please try again." };
   }
 }
 

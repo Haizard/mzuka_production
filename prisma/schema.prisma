@@ -134,6 +134,31 @@ model ServicePackage {
   bookings    Booking[]
 }
 
+enum DeliveryDeadline {
+  STANDARD
+  EXPRESS
+  URGENT
+}
+
+enum BookingStatusV2 {
+  INQUIRY
+  QUOTATION_SENT
+  AWAITING_DEPOSIT
+  CONFIRMED
+  CREW_ASSIGNED
+  EQUIPMENT_PREPARED
+  EVENT_DAY
+  MEDIA_UPLOADING
+  EDITING
+  QUALITY_REVIEW
+  READY_FOR_DELIVERY
+  CUSTOMER_NOTIFIED
+  DELIVERED
+  COMPLETED
+  ARCHIVED
+  CANCELLED
+}
+
 model Booking {
   id            String        @id @default(cuid())
   clientId      String
@@ -142,11 +167,43 @@ model Booking {
   serviceType   String
   location      String?
   scheduledAt   DateTime
+  endTime       DateTime?
+  eventType     String?
+  guestCount    Int?
+  venueType     String?
+  // Services & deliverables (stored as JSON)
+  servicesJson     Json @default("[]")
+  deliverablesJson Json @default("{}")
+  photoSpecJson    Json @default("{}")
+  videoSpecJson    Json @default("{}")
+  // Crew
+  crewPhotographers Int @default(0)
+  crewVideographers Int @default(0)
+  crewDroneOps      Int @default(0)
+  crewAssistants    Int @default(0)
+  // Coverage & overtime
+  includedHours       Int?
+  overtimeRatePerHour Int @default(0)
+  // Delivery
+  deliveryDeadline  DeliveryDeadline @default(STANDARD)
+  deliveryFeeCents  Int @default(0)
+  // Pricing
+  quoteTotalCents   Int @default(0)
+  depositPercent    Int @default(50)
+  // Client extras
+  alternatePhone  String?
+  organization    String?
+  billingAddress  String?
+  // Notes
+  specialRequests String?
+  internalNotes   String?
+  // Status
   status        BookingStatus @default(REQUESTED)
+  statusV2      BookingStatusV2 @default(INQUIRY)
   paymentStatus PaymentStatus @default(UNPAID)
   notes         String?
-  createdAt     DateTime      @default(now())
-  updatedAt     DateTime      @updatedAt
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
   client        User          @relation("ClientBookings", fields: [clientId], references: [id])
   package       ServicePackage? @relation(fields: [packageId], references: [id])
   gallery       Gallery?

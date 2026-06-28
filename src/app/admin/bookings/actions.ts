@@ -1,6 +1,6 @@
 "use server";
 
-import type { BookingStatus, PaymentStatus } from "@prisma/client";
+import type { BookingStatus, PaymentStatus, BookingStatusV2 } from "@prisma/client";
 import { requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { sendBookingConfirmedMessage } from "@/lib/messages";
@@ -75,6 +75,61 @@ const validBookingStatuses: BookingStatus[] = [
 
 function isBookingStatus(value: string): value is BookingStatus {
   return validBookingStatuses.includes(value as BookingStatus);
+}
+
+
+const BOOKING_STATUS_V2_VALUES = [
+  "INQUIRY","QUOTATION_SENT","AWAITING_DEPOSIT","CONFIRMED","CREW_ASSIGNED",
+  "EQUIPMENT_PREPARED","EVENT_DAY","MEDIA_UPLOADING","EDITING","QUALITY_REVIEW",
+  "READY_FOR_DELIVERY","CUSTOMER_NOTIFIED","DELIVERED","COMPLETED","ARCHIVED","CANCELLED",
+] as const;
+
+export async function updateBookingPipelineAction(bookingId: string, statusV2: string) {
+  try {
+    const admin = await requireAdmin();
+
+    if (!BOOKING_STATUS_V2_VALUES.includes(statusV2 as BookingStatusV2)) {
+      return { success: false, error: "Invalid pipeline status" };
+    }
+
+    const updated = await prisma.booking.update({
+      where: { id: bookingId },
+      data: { statusV2: statusV2 as BookingStatusV2 },
+    });
+
+    await prisma.auditLog.create({
+      data: {
+        actorId: admin.id, action: "BOOKING_UPDATED",
+        entity: "Booking", entityId: bookingId,
+        metadata: { statusV2 },
+      },
+    });
+
+    return { success: true, booking: updated };
+  } catch (error) {
+    console.error("Failed to update pipeline:", error);
+    return { success: false, error: "Failed to update pipeline status" };
+  }
+}
+
+export async function updateBookingQuoteAction(bookingId: string, data: {
+  quoteTotalCents?: number; depositPercent?: number; internalNotes?: string;
+}) {
+  try {
+    await requireAdmin();
+    const updated = await prisma.booking.update({
+      where: { id: bookingId },
+      data: {
+        ...(data.quoteTotalCents  !== undefined ? { quoteTotalCents:  data.quoteTotalCents  } : {}),
+        ...(data.depositPercent   !== undefined ? { depositPercent:   data.depositPercent   } : {}),
+        ...(data.internalNotes    !== undefined ? { internalNotes:    data.internalNotes    } : {}),
+      },
+    });
+    return { success: true, booking: updated };
+  } catch (error) {
+    console.error("Failed to update quote:", error);
+    return { success: false, error: "Failed to update" };
+  }
 }
 
 export async function updateBookingStatusAction(bookingId: string, newStatus: string) {

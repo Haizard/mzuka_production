@@ -1,47 +1,41 @@
 import Link from "next/link";
-import { ArrowLeft, Calendar, MapPin, DollarSign, FileText, AlertCircle } from "lucide-react";
+import { ArrowLeft, Calendar, MapPin, DollarSign, FileText, AlertCircle, Users, Camera, Video, Clock, Package, Star } from "lucide-react";
 import { requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { BookingReminders } from "@/components/booking-reminders";
+import { AdminBookingActions } from "./admin-booking-actions";
+import { BOOKING_PIPELINE } from "@/lib/booking-constants";
 
 export const dynamic = "force-dynamic";
+
+function usd(cents: number) { return `$${(cents / 100).toFixed(2)}`; }
+function fmt(d: Date) {
+  return new Date(d).toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric" });
+}
+function fmtTime(d: Date) {
+  return new Date(d).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" });
+}
 
 interface AdminBookingDetailPageProps {
   params: Promise<{ id: string }>;
 }
 
-export default async function AdminBookingDetailPage({
-  params,
-}: AdminBookingDetailPageProps) {
+export default async function AdminBookingDetailPage({ params }: AdminBookingDetailPageProps) {
   await requireAdmin();
   const { id } = await params;
 
   const booking = await prisma.booking.findUnique({
     where: { id },
-    include: {
-      client: true,
-      package: true,
-      gallery: {
-        include: {
-          mediaAssets: true,
-        },
-      },
-      payments: true,
-    },
+    include: { client: true, package: true, gallery: { include: { mediaAssets: true } }, payments: true },
   });
 
   if (!booking) {
     return (
       <main className="min-h-dvh bg-[var(--background)] px-4 py-6 text-white sm:px-6 lg:px-8">
-        <section className="mx-auto max-w-3xl">
-          <Link
-            href="/admin/bookings"
-            className="inline-flex items-center gap-2 text-sm text-zinc-400 hover:text-white transition"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            Back to bookings
+        <section className="mx-auto max-w-4xl">
+          <Link href="/admin/bookings" className="inline-flex items-center gap-2 text-sm text-zinc-400 hover:text-white transition">
+            <ArrowLeft className="h-4 w-4" /> Back to bookings
           </Link>
-
           <div className="mt-8 rounded-lg border border-red-500/20 bg-red-500/10 p-6 text-center">
             <AlertCircle className="mx-auto h-10 w-10 text-red-400" />
             <p className="mt-4 text-red-200">Booking not found</p>
@@ -52,275 +46,241 @@ export default async function AdminBookingDetailPage({
   }
 
   const scheduledDate = new Date(booking.scheduledAt);
-  const totalPaid = booking.payments
-    .filter((p) => p.status === "PAID")
-    .reduce((sum, p) => sum + p.amountCents, 0);
+  const totalPaid = booking.payments.filter((p) => p.status === "PAID").reduce((s, p) => s + p.amountCents, 0);
+  const services   = booking.servicesJson as { photography?: string[]; video?: string[]; additional?: string[] };
+  const deliverables = booking.deliverablesJson as { photos?: string[]; videos?: string[] };
+  const photoSpec  = booking.photoSpecJson  as { quality?: string; editingStyle?: string; colorStyle?: string };
+  const videoSpec  = booking.videoSpecJson  as { resolution?: string; frameRate?: string; orientation?: string; style?: string };
+  const currentStage = BOOKING_PIPELINE.find((p) => p.value === booking.statusV2);
+  const stageIdx   = BOOKING_PIPELINE.findIndex((p) => p.value === booking.statusV2);
 
   return (
     <main className="min-h-dvh bg-[var(--background)] px-4 py-6 text-white sm:px-6 lg:px-8">
-      <section className="mx-auto max-w-3xl">
-        <Link
-          href="/admin/bookings"
-          className="inline-flex items-center gap-2 text-sm text-zinc-400 hover:text-white transition"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Back to bookings
-        </Link>
+      <section className="mx-auto max-w-5xl space-y-6">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <Link href="/admin/bookings" className="inline-flex items-center gap-2 text-sm text-zinc-400 hover:text-white transition mb-3">
+              <ArrowLeft className="h-4 w-4" /> Back
+            </Link>
+            <p className="text-xs uppercase tracking-widest text-[var(--gold)]">Booking Details</p>
+            <h1 className="text-2xl font-bold text-white mt-1">{booking.title}</h1>
+            <p className="text-sm text-zinc-400 mt-0.5">ID: <code className="text-xs">{booking.id}</code></p>
+          </div>
+          {currentStage && (
+            <span className={`text-sm font-semibold px-3 py-1.5 rounded-full bg-white/10 ${currentStage.colour} shrink-0`}>
+              {currentStage.label}
+            </span>
+          )}
+        </div>
 
-        <header className="mt-6 mb-8">
-          <p className="text-xs uppercase tracking-[0.24em] text-[var(--gold)]">
-            Admin Booking Details
-          </p>
-          <h1 className="mt-2 text-3xl font-semibold">{booking.title}</h1>
-          <p className="text-sm text-zinc-400 mt-2">
-            Booking ID: <code className="text-xs">{booking.id}</code>
-          </p>
-        </header>
+        {/* ── Pipeline strip ── */}
+        <div className="rounded-xl border border-white/10 bg-[var(--surface)] p-4">
+          <p className="text-xs text-zinc-500 uppercase mb-3">Production Pipeline</p>
+          <AdminBookingActions bookingId={booking.id} currentStatusV2={booking.statusV2} />
+        </div>
 
-        <div className="grid gap-6">
-          {/* Status and Client Info */}
-          <div className="grid gap-6 md:grid-cols-2">
-            <div className="rounded-lg border border-white/10 bg-[var(--surface)] p-6">
-              <h2 className="font-semibold text-white mb-4">Status</h2>
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-zinc-400">Booking Status</span>
-                  <span className="capitalize text-sm font-medium">
-                    {booking.status === "REQUESTED" && (
-                      <span className="text-blue-300 bg-blue-500/10 px-2 py-1 rounded">
-                        Pending Review
-                      </span>
-                    )}
-                    {booking.status === "CONFIRMED" && (
-                      <span className="text-emerald-300 bg-emerald-500/10 px-2 py-1 rounded">
-                        Confirmed
-                      </span>
-                    )}
-                    {booking.status === "IN_PROGRESS" && (
-                      <span className="text-yellow-300 bg-yellow-500/10 px-2 py-1 rounded">
-                        In Progress
-                      </span>
-                    )}
-                    {booking.status === "COMPLETED" && (
-                      <span className="text-purple-300 bg-purple-500/10 px-2 py-1 rounded">
-                        Completed
-                      </span>
-                    )}
-                    {booking.status === "CANCELLED" && (
-                      <span className="text-red-300 bg-red-500/10 px-2 py-1 rounded">
-                        Cancelled
-                      </span>
-                    )}
-                  </span>
-                </div>
+        <div className="grid gap-4 lg:grid-cols-3">
+          {/* ── Main content (2 cols) ── */}
+          <div className="lg:col-span-2 space-y-4">
 
-                <div className="flex items-center justify-between">
-                  <span className="text-zinc-400">Payment Status</span>
-                  <span className="capitalize text-sm font-medium">
-                    {booking.paymentStatus === "UNPAID" && (
-                      <span className="text-zinc-300 bg-zinc-500/10 px-2 py-1 rounded">
-                        Unpaid
-                      </span>
-                    )}
-                    {booking.paymentStatus === "DEPOSIT_PAID" && (
-                      <span className="text-blue-300 bg-blue-500/10 px-2 py-1 rounded">
-                        Deposit Paid
-                      </span>
-                    )}
-                    {booking.paymentStatus === "PAID" && (
-                      <span className="text-emerald-300 bg-emerald-500/10 px-2 py-1 rounded">
-                        Fully Paid
-                      </span>
-                    )}
-                  </span>
-                </div>
+            {/* Event & Client */}
+            <div className="rounded-xl border border-white/10 bg-[var(--surface)] p-5 space-y-4">
+              <h2 className="font-semibold text-white">Event Details</h2>
+              <div className="grid gap-3 sm:grid-cols-2 text-sm">
+                <Row icon={Star}     label="Event Type"  value={booking.eventType ?? booking.serviceType} />
+                <Row icon={Calendar} label="Date"        value={fmt(scheduledDate)} />
+                <Row icon={Clock}    label="Start Time"  value={fmtTime(scheduledDate)} />
+                {booking.endTime && <Row icon={Clock} label="End Time" value={fmtTime(new Date(booking.endTime))} />}
+                {booking.location  && <Row icon={MapPin}  label="Location"  value={booking.location} />}
+                {booking.venueType && <Row icon={MapPin}  label="Venue Type" value={booking.venueType} />}
+                {booking.guestCount && <Row icon={Users} label="Guests" value={String(booking.guestCount)} />}
               </div>
             </div>
 
-            <div className="rounded-lg border border-white/10 bg-[var(--surface)] p-6">
-              <h2 className="font-semibold text-white mb-4">Client Info</h2>
-              <div className="space-y-2 text-sm">
-                <div>
-                  <p className="text-zinc-400">Name</p>
-                  <p className="text-white">{booking.client.name}</p>
+            {/* Client info */}
+            <div className="rounded-xl border border-white/10 bg-[var(--surface)] p-5">
+              <h2 className="font-semibold text-white mb-3">Client</h2>
+              <div className="grid gap-2 sm:grid-cols-2 text-sm">
+                <Row label="Name"  value={booking.client.name} />
+                <Row label="Email" value={booking.client.email} />
+                {booking.client.phone      && <Row label="Phone"     value={booking.client.phone} />}
+                {booking.alternatePhone    && <Row label="Alt Phone"  value={booking.alternatePhone} />}
+                {booking.organization      && <Row label="Organization" value={booking.organization} />}
+                {booking.billingAddress    && <Row label="Billing"    value={booking.billingAddress} />}
+              </div>
+            </div>
+
+            {/* Services & Deliverables */}
+            {((services.photography?.length ?? 0) + (services.video?.length ?? 0) + (services.additional?.length ?? 0)) > 0 && (
+              <div className="rounded-xl border border-white/10 bg-[var(--surface)] p-5">
+                <h2 className="font-semibold text-white mb-3">Services & Deliverables</h2>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  {services.photography && services.photography.length > 0 && (
+                    <div>
+                      <p className="text-xs text-zinc-500 uppercase mb-2 flex items-center gap-1"><Camera className="h-3 w-3" /> Photography</p>
+                      <ul className="space-y-1">{services.photography.map((s) => <li key={s} className="text-sm text-zinc-300">• {s.replace(/_/g," ")}</li>)}</ul>
+                    </div>
+                  )}
+                  {services.video && services.video.length > 0 && (
+                    <div>
+                      <p className="text-xs text-zinc-500 uppercase mb-2 flex items-center gap-1"><Video className="h-3 w-3" /> Video</p>
+                      <ul className="space-y-1">{services.video.map((s) => <li key={s} className="text-sm text-zinc-300">• {s.replace(/_/g," ")}</li>)}</ul>
+                    </div>
+                  )}
+                  {services.additional && services.additional.length > 0 && (
+                    <div>
+                      <p className="text-xs text-zinc-500 uppercase mb-2 flex items-center gap-1"><Star className="h-3 w-3" /> Additional</p>
+                      <ul className="space-y-1">{services.additional.map((s) => <li key={s} className="text-sm text-zinc-300">• {s.replace(/_/g," ")}</li>)}</ul>
+                    </div>
+                  )}
+                  {(deliverables.photos?.length ?? 0) + (deliverables.videos?.length ?? 0) > 0 && (
+                    <div>
+                      <p className="text-xs text-zinc-500 uppercase mb-2 flex items-center gap-1"><Package className="h-3 w-3" /> Deliverables</p>
+                      <ul className="space-y-1">
+                        {[...(deliverables.photos ?? []), ...(deliverables.videos ?? [])].map((d) => <li key={d} className="text-sm text-zinc-300">• {d.replace(/_/g," ")}</li>)}
+                      </ul>
+                    </div>
+                  )}
                 </div>
+              </div>
+            )}
+
+            {/* Crew & Specs */}
+            <div className="rounded-xl border border-white/10 bg-[var(--surface)] p-5">
+              <h2 className="font-semibold text-white mb-3">Crew & Specifications</h2>
+              <div className="grid gap-4 sm:grid-cols-2">
                 <div>
-                  <p className="text-zinc-400">Email</p>
-                  <p className="text-white break-all">{booking.client.email}</p>
+                  <p className="text-xs text-zinc-500 uppercase mb-2 flex items-center gap-1"><Users className="h-3 w-3" /> Crew</p>
+                  <div className="space-y-1 text-sm text-zinc-300">
+                    <p>{booking.crewPhotographers} Photographer{booking.crewPhotographers !== 1 ? "s" : ""}</p>
+                    <p>{booking.crewVideographers} Videographer{booking.crewVideographers !== 1 ? "s" : ""}</p>
+                    {booking.crewDroneOps > 0 && <p>{booking.crewDroneOps} Drone Operator{booking.crewDroneOps !== 1 ? "s" : ""}</p>}
+                    {booking.crewAssistants > 0 && <p>{booking.crewAssistants} Assistant{booking.crewAssistants !== 1 ? "s" : ""}</p>}
+                    {booking.includedHours && <p className="text-zinc-400 text-xs mt-1">{booking.includedHours}h included coverage</p>}
+                  </div>
                 </div>
-                {booking.client.phone && (
+                {(photoSpec.quality || photoSpec.editingStyle) && (
                   <div>
-                    <p className="text-zinc-400">Phone</p>
-                    <p className="text-white">{booking.client.phone}</p>
+                    <p className="text-xs text-zinc-500 uppercase mb-2 flex items-center gap-1"><Camera className="h-3 w-3" /> Photo Spec</p>
+                    <div className="space-y-1 text-sm text-zinc-300">
+                      {photoSpec.quality      && <p>Quality: {photoSpec.quality}</p>}
+                      {photoSpec.editingStyle && <p>Style: {photoSpec.editingStyle}</p>}
+                      {photoSpec.colorStyle   && <p>Color: {photoSpec.colorStyle}</p>}
+                    </div>
+                  </div>
+                )}
+                {(videoSpec.resolution || videoSpec.style) && (
+                  <div>
+                    <p className="text-xs text-zinc-500 uppercase mb-2 flex items-center gap-1"><Video className="h-3 w-3" /> Video Spec</p>
+                    <div className="space-y-1 text-sm text-zinc-300">
+                      {videoSpec.resolution   && <p>Resolution: {videoSpec.resolution}</p>}
+                      {videoSpec.frameRate    && <p>Frame Rate: {videoSpec.frameRate}</p>}
+                      {videoSpec.orientation  && <p>Orientation: {videoSpec.orientation}</p>}
+                      {videoSpec.style        && <p>Style: {videoSpec.style}</p>}
+                    </div>
                   </div>
                 )}
               </div>
             </div>
-          </div>
 
-          {/* Event Details */}
-          <div className="rounded-lg border border-white/10 bg-[var(--surface)] p-6">
-            <h2 className="font-semibold text-white mb-4">Event Details</h2>
-            <div className="space-y-4">
-              <div className="flex gap-3">
-                <FileText className="h-5 w-5 text-[var(--gold)] flex-shrink-0 mt-0.5" />
-                <div>
-                  <p className="text-xs text-zinc-500 uppercase">Service Type</p>
-                  <p className="text-white capitalize">{booking.serviceType}</p>
-                </div>
-              </div>
-
-              <div className="flex gap-3">
-                <Calendar className="h-5 w-5 text-[var(--gold)] flex-shrink-0 mt-0.5" />
-                <div>
-                  <p className="text-xs text-zinc-500 uppercase">Event Date & Time</p>
-                  <p className="text-white">
-                    {scheduledDate.toLocaleDateString("en-US", {
-                      weekday: "long",
-                      year: "numeric",
-                      month: "long",
-                      day: "numeric",
-                    })}{" "}
-                    at{" "}
-                    {scheduledDate.toLocaleTimeString("en-US", {
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    })}
-                  </p>
-                </div>
-              </div>
-
-              {booking.location && (
-                <div className="flex gap-3">
-                  <MapPin className="h-5 w-5 text-[var(--gold)] flex-shrink-0 mt-0.5" />
+            {/* Special requests + notes */}
+            {(booking.specialRequests || booking.notes) && (
+              <div className="rounded-xl border border-white/10 bg-[var(--surface)] p-5 space-y-3">
+                {booking.specialRequests && (
                   <div>
-                    <p className="text-xs text-zinc-500 uppercase">Location</p>
-                    <p className="text-white">{booking.location}</p>
+                    <p className="text-xs text-zinc-500 uppercase mb-1">Special Requests</p>
+                    <p className="text-sm text-zinc-200 whitespace-pre-wrap">{booking.specialRequests}</p>
                   </div>
-                </div>
-              )}
-
-              {booking.package && (
-                <div className="flex gap-3">
-                  <DollarSign className="h-5 w-5 text-[var(--gold)] flex-shrink-0 mt-0.5" />
+                )}
+                {booking.notes && (
                   <div>
-                    <p className="text-xs text-zinc-500 uppercase">Package</p>
-                    <p className="text-white">{booking.package.name}</p>
-                    {booking.package.durationMin && (
-                      <p className="text-sm text-zinc-400">
-                        {booking.package.durationMin} minutes
-                      </p>
-                    )}
+                    <p className="text-xs text-zinc-500 uppercase mb-1">Additional Notes</p>
+                    <p className="text-sm text-zinc-200 whitespace-pre-wrap">{booking.notes}</p>
                   </div>
-                </div>
-              )}
+                )}
+              </div>
+            )}
 
-              {booking.notes && (
-                <div>
-                  <p className="text-xs text-zinc-500 uppercase mb-2">Notes</p>
-                  <p className="text-white text-sm whitespace-pre-wrap">
-                    {booking.notes}
-                  </p>
-                </div>
-              )}
-            </div>
+            {booking.internalNotes && (
+              <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-5">
+                <p className="text-xs text-amber-400 uppercase mb-1">Internal Notes (Staff Only)</p>
+                <p className="text-sm text-amber-200 whitespace-pre-wrap">{booking.internalNotes}</p>
+              </div>
+            )}
           </div>
 
-          {/* Payment Summary */}
-          <div className="rounded-lg border border-white/10 bg-[var(--surface)] p-6">
-            <h2 className="font-semibold text-white mb-4">Payment Summary</h2>
-            <div className="space-y-3 text-sm">
-              {booking.package && (
-                <div className="flex justify-between">
-                  <span className="text-zinc-400">Package Price</span>
-                  <span className="text-white">
-                    ${(booking.package.priceCents / 100).toFixed(2)}
-                  </span>
-                </div>
-              )}
-
-              {booking.payments.length > 0 && (
-                <div className="border-t border-white/10 pt-3 mt-3">
-                  <p className="text-xs text-zinc-500 uppercase mb-2">
-                    Payments
-                  </p>
-                  {booking.payments.map((payment) => (
-                    <div
-                      key={payment.id}
-                      className="flex justify-between text-xs mb-2"
-                    >
-                      <span className="text-zinc-400 capitalize">
-                        {payment.status.toLowerCase()}
-                      </span>
-                      <span className="text-white">
-                        ${(payment.amountCents / 100).toFixed(2)}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              <div className="border-t border-white/10 pt-3 mt-3 flex justify-between font-semibold">
-                <span>Total Paid</span>
-                <span className="text-[var(--gold)]">
-                  ${(totalPaid / 100).toFixed(2)}
-                </span>
-              </div>
-
-              <div className="flex justify-between font-semibold text-white">
-                <span>Outstanding</span>
-                <span className="text-orange-400">
-                  ${((booking.package?.priceCents || 0) - totalPaid) / 100 > 0
-                    ? ((booking.package?.priceCents || 0) - totalPaid) / 100
-                    : 0}
-                </span>
-              </div>
-            </div>
-          </div>
-
-          {/* Gallery Section */}
-          {booking.gallery && (
-            <div className="rounded-lg border border-white/10 bg-[var(--surface)] p-6">
-              <h2 className="font-semibold text-white mb-4">Gallery</h2>
+          {/* ── Sidebar ── */}
+          <div className="space-y-4">
+            {/* Payment summary */}
+            <div className="rounded-xl border border-white/10 bg-[var(--surface)] p-5">
+              <h3 className="font-semibold text-white mb-3 flex items-center gap-2"><DollarSign className="h-4 w-4 text-[var(--gold)]" /> Payment</h3>
               <div className="space-y-2 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-zinc-400">Gallery ID</span>
-                  <code className="text-xs text-white">{booking.gallery.id}</code>
+                {booking.package && <div className="flex justify-between"><span className="text-zinc-400">Package</span><span className="text-white">{usd(booking.package.priceCents)}</span></div>}
+                {booking.quoteTotalCents > 0 && (
+                  <div className="flex justify-between border-t border-white/10 pt-2 font-semibold">
+                    <span className="text-zinc-300">Est. Quote</span>
+                    <span className="text-[var(--gold)]">{usd(booking.quoteTotalCents)}</span>
+                  </div>
+                )}
+                {booking.quoteTotalCents > 0 && (
+                  <div className="flex justify-between">
+                    <span className="text-zinc-400">Deposit ({booking.depositPercent}%)</span>
+                    <span className="text-white">{usd(Math.round(booking.quoteTotalCents * booking.depositPercent / 100))}</span>
+                  </div>
+                )}
+                {booking.deliveryFeeCents > 0 && (
+                  <div className="flex justify-between">
+                    <span className="text-zinc-400">{booking.deliveryDeadline} Delivery</span>
+                    <span className="text-white">+{usd(booking.deliveryFeeCents)}</span>
+                  </div>
+                )}
+                <div className="flex justify-between border-t border-white/10 pt-2">
+                  <span className="text-zinc-400">Total Paid</span>
+                  <span className="text-emerald-400">{usd(totalPaid)}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-zinc-400">Media Assets</span>
-                  <span className="text-white">
-                    {booking.gallery.mediaAssets.length} files
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-zinc-400">Expires</span>
-                  <span className="text-white">
-                    {booking.gallery.expiresAt
-                      ? new Date(
-                          booking.gallery.expiresAt
-                        ).toLocaleDateString()
-                      : "No expiration"}
-                  </span>
+                  <span className="text-zinc-400">Outstanding</span>
+                  <span className="text-amber-400">{usd(Math.max(0, (booking.quoteTotalCents || booking.package?.priceCents || 0) - totalPaid))}</span>
                 </div>
               </div>
-              <Link
-                href={`/admin/galleries?galleryId=${booking.gallery.id}`}
-                className="mt-4 inline-block rounded-lg bg-[var(--gold)] px-4 py-2 text-sm font-semibold text-black hover:bg-yellow-500 transition"
-              >
-                Manage Gallery
-              </Link>
+              <div className="mt-3 pt-3 border-t border-white/10 flex gap-2 flex-wrap">
+                <span className={`text-xs px-2 py-1 rounded-full ${booking.paymentStatus === "PAID" ? "bg-emerald-500/15 text-emerald-300" : booking.paymentStatus === "DEPOSIT_PAID" ? "bg-blue-500/15 text-blue-300" : "bg-zinc-700/50 text-zinc-400"}`}>
+                  {booking.paymentStatus.replace("_"," ")}
+                </span>
+                <span className="text-xs px-2 py-1 rounded-full bg-white/5 text-zinc-400">
+                  {booking.deliveryDeadline} delivery
+                </span>
+              </div>
             </div>
-          )}
 
-          {/* Reminders */}
-          <BookingReminders
-            bookingId={booking.id}
-            clientEmail={booking.client.email}
-            clientPhone={booking.client.phone || undefined}
-          />
+            {/* Gallery link */}
+            {booking.gallery && (
+              <div className="rounded-xl border border-white/10 bg-[var(--surface)] p-5">
+                <h3 className="font-semibold text-white mb-2">Gallery</h3>
+                <p className="text-sm text-zinc-400 mb-3">{booking.gallery.mediaAssets.length} assets</p>
+                <Link href="/admin/galleries" className="inline-block rounded-lg bg-[var(--gold)] px-4 py-2 text-sm font-semibold text-black hover:bg-yellow-400 transition">
+                  Manage Gallery
+                </Link>
+              </div>
+            )}
+
+            {/* Reminders */}
+            <BookingReminders bookingId={booking.id} clientEmail={booking.client.email} clientPhone={booking.client.phone || undefined} />
+          </div>
         </div>
       </section>
     </main>
+  );
+}
+
+function Row({ icon: Icon, label, value }: { icon?: React.ElementType; label: string; value: string }) {
+  return (
+    <div className="flex items-start gap-2">
+      {Icon && <Icon className="h-4 w-4 text-[var(--gold)] shrink-0 mt-0.5" />}
+      <div>
+        <p className="text-xs text-zinc-500 uppercase">{label}</p>
+        <p className="text-white text-sm">{value}</p>
+      </div>
+    </div>
   );
 }
