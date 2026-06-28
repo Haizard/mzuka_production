@@ -89,7 +89,13 @@ export async function uploadMediaAssetAction(
 
     if (!gallery) return { success: false, error: "Gallery not found" };
 
-    const uploadResult = await generateS3UploadUrl(filename, filetype, mediaKind);
+    const uploadResult = await generateS3UploadUrl(
+      gallery.bookingId,
+      filename,
+      filetype,
+      "raw",
+      sizeBytes
+    );
     if (!uploadResult.success || !uploadResult.s3Key) {
       return { success: false, error: uploadResult.error };
     }
@@ -156,10 +162,10 @@ export async function generatePreviewAction(mediaAssetId: string) {
     if (asset.previewKey) return { success: true, skipped: true }; // already done
 
     const originalsBucket = process.env.AWS_S3_BUCKET_PRIVATE_ORIGINALS;
-    if (!originalsBucket) return { success: false, error: "Originals bucket not configured" };
+    if (!originalsBucket) return { success: false, error: "S3 bucket not configured" };
 
     // Pull original bytes
-    const originalBuffer = await downloadS3Object(originalsBucket, asset.originalKey);
+    const originalBuffer = await downloadS3Object(asset.originalKey);
 
     // Build watermark label from client info
     const client = asset.gallery.booking.client;
@@ -212,11 +218,11 @@ export async function analyzeMediaAssetAction(mediaAssetId: string) {
     });
     if (existing) return { success: true, analysis: existing, cached: true };
 
-    const bucket = process.env.AWS_S3_BUCKET_PRIVATE_ORIGINALS;
-    if (!bucket) return { success: false, error: "Originals bucket not configured" };
+    const bucket = process.env.AWS_S3_BUCKET;
+    if (!bucket) return { success: false, error: "S3 bucket not configured" };
 
     // Download original for analysis
-    const imageBuffer = await downloadS3Object(bucket, asset.originalKey);
+    const imageBuffer = await downloadS3Object(asset.originalKey);
     const imageBase64 = imageBuffer.toString("base64");
 
     // Score with OpenAI Vision
@@ -382,7 +388,7 @@ export async function getGalleryAccessUrls(
         let downloadUrl: string | null = null;
 
         if (isPaid) {
-          // Full-quality signed download URL
+          // Full-quality signed download URL (raw or edited folder)
           const dl = await generateS3DownloadUrl(asset.originalKey, 3600);
           downloadUrl = dl.downloadUrl ?? null;
         } else {

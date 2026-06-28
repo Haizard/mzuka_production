@@ -1,65 +1,269 @@
-"use server";
-
 import {
   S3Client,
   PutObjectCommand,
   GetObjectCommand,
+  ListObjectsV2Command,
+  DeleteObjectCommand,
+  HeadObjectCommand,
 } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
-import { nanoid } from "nanoid";
 import type { Readable } from "stream";
 
-const s3Client = new S3Client({
-  region: process.env.AWS_REGION || "us-east-1",
-  credentials: {
-    accessKeyId: process.env.AWS_ACCESS_KEY_ID || "",
-    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || "",
-  },
-});
+// ── S3 client singleton ───────────────────────────────────────────────────────
 
-// ── Upload ────────────────────────────────────────────────────────────────────
+function getS3Client() {
+  const region = process.env.AWS_REGION;
+  const accessKeyId = process.env.AWS_ACCESS_KEY_ID;
+  const secretAccessKey = process.env.AWS_SECRET_ACCESS_KEY;
 
-/** Returns a signed PUT URL so the browser can upload directly to S3. */
-export async function generateS3UploadUrl(
+  if (!region || !accessKeyId || !secretAccessKey) {
+    throw new Error("AWS credentials not configured. Set AWS_REGION, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY.");
+  }
+
+  return new S3Client({ region, credentials: { accessKeyId, secretAccessKey } });
+}
+
+function getBucket() {
+  const bucket = process.env.AWS_S3_BUCKET;
+  if (!bucket) throw new Error("AWS_S3_BUCKET not configured.");
+  return bucket;
+}
+
+// ── Key builders — booking-based folder structure ─────────────────────────────
+// s3://mzukapruduction/bookings/{bookingId}/raw/        ← originals
+// s3://mzukapruduction/bookings/{bookingId}/edited/     ← post-processed
+// s3://mzukapruduction/bookings/{bookingId}/previews/   ← watermarked JPEGs
+
+export type MediaFolder = "raw" | "edited" | "previews";
+
+export function buildS3Key(
+  bookingId: string,
+  folder: MediaFolder,
+  filename: string
+): string {
+  // Sanitise filename — no path traversal, no spaces
+  const safe = filename.replace(/[^a-zA-Z0-9._-]/g, "_");
+  return `bookings/${bookingId}/${folder}/${safe}`;
+}
+
+/** Derive preview key from raw key */
+export function rawKeyToPreviewKey(rawKey: string): string {
+  return rawKey.replace(/^bookings\/([^/]+)\/raw\//, "bookings/$1/previews/");
+}
+
+// ── Allowed types ─────────────────────────────────────────────────────────────
+
+const ALLOWED_IMAGE_TYPES = new Set([
+  "image/jpeg", "image/jpg", "image/png", "image/webp",
+]);
+const ALLOWED_VIDEO_TYPES = new Set([
+  "video/mp4", "video/quicktime", "video/x-matroska",
+]);
+const ALLOWED_EXTENSIONS = new Set([
+  "jpg", "jpeg", "png", "webp", "mp4", "mov", "mkv",
+]);
+
+const MAX_IMAGE_BYTES = 100 * 1024 * 1024;  // 100 MB
+const MAX_VIDEO_BYTES = 500 * 1024 * 1024;  // 500 MB (configurable)
+
+export interface FileValidation {
+  valid: boolean;
+  error?: string;
+  kind?: "PHOTO" | "VIDEO";
+}
+
+export function validateMediaFile(
+  mimeType: string,
   filename: string,
-  filetype: string,
-  mediaKind: "PHOTO" | "VIDEO"
-) {
-  try {
-    const bucket = process.env.AWS_S3_BUCKET_PRIVATE_ORIGINALS;
-    if (!bucket) throw new Error("S3 originals bucket not configured");
+  sizeBytes?: number
+): FileValidation {
+  const ext = filename.split(".").pop()?.toLowerCase() ?? "";
 
-    const key = `originals/${mediaKind.toLowerCase()}/${nanoid()}/${filename}`;
+  if (!ALLOWED_EXTENSIONS.has(ext)) {
+    return { valid: false, error: `File extension .${ext} not allowed. Allowed: jpg, jpeg, png, webp, mp4, mov, mkv` };
+  }
+
+  if (ALLOWED_IMAGE_TYPES.has(mimeType)) {
+    if (sizeBytes && sizeBytes > MAX_IMAGE_BYTES) {
+      return { valid: false, error: `Image too large. Max ${MAX_IMAGE_BYTES / 1024 / 1024}MB` };
+    }
+    return { valid: true, kind: "PHOTO" };
+  }
+
+  if (ALLOWED_VIDEO_TYPES.has(mimeType)) {
+    if (sizeBytes && sizeBytes > MAX_VIDEO_BYTES) {
+      return { valid: false, error: `Video too large. Max ${MAX_VIDEO_BYTES / 1024 / 1024}MB` };
+    }
+    return { valid: true, kind: "VIDEO" };
+  }
+
+  return { valid: false, error: `MIME type ${mimeType} not allowed` };
+}
+
+// ── Presigned upload URL (browser → S3 directly) ─────────────────────────────
+
+export interface UploadUrlResult {
+  success: boolean;
+  uploadUrl?: string;
+  s3Key?: string;
+  error?: string;
+}
+
+export async function generateS3UploadUrl(
+  bookingId: string,
+  filename: string,
+  mimeType: string,
+  folder: MediaFolder = "raw",
+  sizeBytes?: number
+): Promise<UploadUrlResult> {
+  try {
+    const validation = validateMediaFile(mimeType, filename, sizeBytes);
+    if (!validation.valid) {
+      return { success: false, error: validation.error };
+    }
+
+    const s3 = getS3Client();
+    const bucket = getBucket();
+    const key = buildS3Key(bookingId, folder, filename);
 
     const command = new PutObjectCommand({
-      Bucket: bucket,
-      Key: key,
-      ContentType: filetype,
+      Bucket:      bucket,
+      Key:         key,
+      ContentType: mimeType,
+      // Tags for lifecycle rules and cost allocation
+      Tagging: `bookingId=${bookingId}&folder=${folder}`,
     });
 
-    const url = await getSignedUrl(s3Client, command, { expiresIn: 3600 });
+    const uploadUrl = await getSignedUrl(s3, command, { expiresIn: 3600 });
 
-    return { success: true, uploadUrl: url, s3Key: key };
+    return { success: true, uploadUrl, s3Key: key };
   } catch (error) {
-    console.error("Failed to generate S3 upload URL:", error);
-    return { success: false, error: "Failed to generate upload URL", uploadUrl: undefined, s3Key: undefined };
+    console.error("[s3] generateS3UploadUrl error:", error);
+    return { success: false, error: "Failed to generate upload URL" };
   }
 }
 
-/**
- * Downloads an object from S3 and returns its raw bytes as a Buffer.
- * Used server-side to pull the original so we can watermark it.
- */
+// ── Presigned download URL (secure, time-limited) ────────────────────────────
+
+export interface DownloadUrlResult {
+  success: boolean;
+  url?: string;
+  error?: string;
+}
+
+export async function generatePresignedDownloadUrl(
+  s3Key: string,
+  expiresIn = 3600,
+  disposition?: string
+): Promise<DownloadUrlResult> {
+  try {
+    const s3 = getS3Client();
+    const bucket = getBucket();
+
+    const command = new GetObjectCommand({
+      Bucket:                     bucket,
+      Key:                        s3Key,
+      ResponseContentDisposition: disposition,
+    });
+
+    const url = await getSignedUrl(s3, command, { expiresIn });
+    return { success: true, url };
+  } catch (error) {
+    console.error("[s3] generatePresignedDownloadUrl error:", error);
+    return { success: false, error: "Failed to generate download URL" };
+  }
+}
+
+/** Convenience wrappers */
+export async function generateS3DownloadUrl(s3Key: string, expiresIn = 3600) {
+  const result = await generatePresignedDownloadUrl(s3Key, expiresIn);
+  return { success: result.success, downloadUrl: result.url, error: result.error };
+}
+
+export async function generateS3PreviewUrl(s3Key: string, expiresIn = 7200) {
+  const result = await generatePresignedDownloadUrl(s3Key, expiresIn);
+  return { success: result.success, previewUrl: result.url, error: result.error };
+}
+
+// ── List files in a booking folder ───────────────────────────────────────────
+
+export interface S3ObjectMeta {
+  key: string;
+  size: number;
+  lastModified: Date;
+  folder: MediaFolder;
+  filename: string;
+}
+
+export async function listBookingFiles(
+  bookingId: string,
+  folder?: MediaFolder
+): Promise<S3ObjectMeta[]> {
+  const s3 = getS3Client();
+  const bucket = getBucket();
+  const prefix = folder
+    ? `bookings/${bookingId}/${folder}/`
+    : `bookings/${bookingId}/`;
+
+  const results: S3ObjectMeta[] = [];
+  let continuationToken: string | undefined;
+
+  do {
+    const command = new ListObjectsV2Command({
+      Bucket:            bucket,
+      Prefix:            prefix,
+      ContinuationToken: continuationToken,
+      MaxKeys:           1000,
+    });
+
+    const response = await s3.send(command);
+
+    for (const obj of response.Contents ?? []) {
+      if (!obj.Key || obj.Key.endsWith("/")) continue; // skip folders
+      const parts = obj.Key.split("/");
+      const detectedFolder = parts[2] as MediaFolder;
+      const filename = parts.slice(3).join("/");
+
+      results.push({
+        key:          obj.Key,
+        size:         obj.Size ?? 0,
+        lastModified: obj.LastModified ?? new Date(),
+        folder:       detectedFolder,
+        filename,
+      });
+    }
+
+    continuationToken = response.NextContinuationToken;
+  } while (continuationToken);
+
+  return results;
+}
+
+// ── Server-side download (for watermarking) ───────────────────────────────────
+
 export async function downloadS3Object(
-  bucket: string,
-  key: string
+  bucketOrKey: string,
+  keyOrUndefined?: string
 ): Promise<Buffer> {
+  const s3 = getS3Client();
+
+  // Support both (bucket, key) and (key) signatures for backward compatibility
+  let bucket: string;
+  let key: string;
+
+  if (keyOrUndefined !== undefined) {
+    bucket = bucketOrKey;
+    key = keyOrUndefined;
+  } else {
+    bucket = getBucket();
+    key = bucketOrKey;
+  }
+
   const command = new GetObjectCommand({ Bucket: bucket, Key: key });
-  const response = await s3Client.send(command);
+  const response = await s3.send(command);
 
   if (!response.Body) throw new Error(`Empty body for s3://${bucket}/${key}`);
 
-  // Body is a Readable stream in Node
   const stream = response.Body as Readable;
   const chunks: Buffer[] = [];
   for await (const chunk of stream) {
@@ -68,67 +272,51 @@ export async function downloadS3Object(
   return Buffer.concat(chunks);
 }
 
-/**
- * Uploads a buffer (e.g. watermarked preview JPEG) to the previews bucket.
- * Returns the S3 key it was stored under.
- */
+// ── Upload buffer (for watermarked preview) ───────────────────────────────────
+
+export async function uploadBufferToS3(
+  key: string,
+  buffer: Buffer,
+  contentType = "image/jpeg"
+): Promise<void> {
+  const s3 = getS3Client();
+  const bucket = getBucket();
+
+  await s3.send(new PutObjectCommand({
+    Bucket:      bucket,
+    Key:         key,
+    Body:        buffer,
+    ContentType: contentType,
+  }));
+}
+
+/** Backward-compat wrapper used by watermark pipeline */
 export async function uploadPreviewToS3(
   buffer: Buffer,
-  originalKey: string
+  rawKey: string
 ): Promise<string> {
-  const bucket = process.env.AWS_S3_BUCKET_PRIVATE_PREVIEWS;
-  if (!bucket) throw new Error("S3 previews bucket not configured");
-
-  // Derive a parallel key under previews/
-  const previewKey = `previews/${originalKey.replace(/^originals\//, "")}`;
-
-  const command = new PutObjectCommand({
-    Bucket: bucket,
-    Key: previewKey,
-    Body: buffer,
-    ContentType: "image/jpeg",
-  });
-
-  await s3Client.send(command);
+  const previewKey = rawKeyToPreviewKey(rawKey);
+  await uploadBufferToS3(previewKey, buffer, "image/jpeg");
   return previewKey;
 }
 
-// ── Signed read URLs ──────────────────────────────────────────────────────────
+// ── Object existence check ────────────────────────────────────────────────────
 
-/** Signed URL for full-quality original download (post-payment). */
-export async function generateS3DownloadUrl(
-  s3Key: string,
-  expiresIn: number = 3600
-) {
+export async function s3ObjectExists(key: string): Promise<boolean> {
   try {
-    const bucket = process.env.AWS_S3_BUCKET_PRIVATE_ORIGINALS;
-    if (!bucket) throw new Error("S3 originals bucket not configured");
-
-    const command = new GetObjectCommand({ Bucket: bucket, Key: s3Key });
-    const url = await getSignedUrl(s3Client, command, { expiresIn });
-
-    return { success: true, downloadUrl: url };
-  } catch (error) {
-    console.error("Failed to generate S3 download URL:", error);
-    return { success: false, error: "Failed to generate download URL", downloadUrl: undefined };
+    const s3 = getS3Client();
+    const bucket = getBucket();
+    await s3.send(new HeadObjectCommand({ Bucket: bucket, Key: key }));
+    return true;
+  } catch {
+    return false;
   }
 }
 
-/** Signed URL for watermarked preview (pre-payment). */
-export async function generateS3PreviewUrl(
-  s3Key: string,
-  expiresIn: number = 7200
-) {
-  try {
-    const bucket = process.env.AWS_S3_BUCKET_PRIVATE_PREVIEWS;
-    if (!bucket) throw new Error("Preview bucket not configured");
+// ── Delete object ─────────────────────────────────────────────────────────────
 
-    const command = new GetObjectCommand({ Bucket: bucket, Key: s3Key });
-    const url = await getSignedUrl(s3Client, command, { expiresIn });
-
-    return { success: true, previewUrl: url };
-  } catch (error) {
-    console.error("Failed to generate S3 preview URL:", error);
-    return { success: false, error: "Failed to generate preview URL", previewUrl: undefined };
-  }
+export async function deleteS3Object(key: string): Promise<void> {
+  const s3 = getS3Client();
+  const bucket = getBucket();
+  await s3.send(new DeleteObjectCommand({ Bucket: bucket, Key: key }));
 }
