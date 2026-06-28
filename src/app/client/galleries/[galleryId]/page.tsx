@@ -145,28 +145,36 @@ export default async function GalleryDetailPage({ params }: GalleryDetailPagePro
                 >
                   {/* Media preview */}
                   <div className="relative aspect-square bg-black/50 overflow-hidden select-none">
-                    {asset.kind === "PHOTO" && asset.previewUrl && (
+                    {asset.kind === "PHOTO" && (asset.previewUrl ?? asset.downloadUrl) && (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img
-                        src={asset.previewUrl}
+                        src={(asset.previewUrl ?? asset.downloadUrl)!}
                         alt={asset.filename}
                         draggable={false}
                         className="w-full h-full object-cover transition group-hover:scale-105 duration-500"
                         style={{
-                          opacity: gallery.isPaid ? 1 : 0.85,
-                          pointerEvents: gallery.isPaid ? "auto" : "none",
+                          filter: !gallery.isPaid ? "blur(2px) brightness(0.6)" : "none",
+                          pointerEvents: "none",
                         }}
                       />
+                    )}
+                    {asset.kind === "PHOTO" && !asset.previewUrl && !asset.downloadUrl && (
+                      <div className="w-full h-full flex items-center justify-center bg-zinc-900">
+                        <ImageIcon className="h-10 w-10 text-zinc-700" />
+                      </div>
                     )}
                     {asset.kind === "VIDEO" && (
                       <div className="w-full h-full flex items-center justify-center bg-zinc-900">
                         <div className="text-5xl">🎥</div>
                       </div>
                     )}
-                    {/* Lock overlay for unpaid */}
+                    {/* Lock overlay — sits ON TOP of the blurred preview */}
                     {!gallery.isPaid && (
-                      <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/30 gap-2">
-                        <Lock className="h-7 w-7 text-white/60" />
+                      <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 pointer-events-none">
+                        <div className="bg-black/50 rounded-full p-3 backdrop-blur-sm">
+                          <Lock className="h-6 w-6 text-[var(--gold)]" />
+                        </div>
+                        <span className="text-xs text-white/70 bg-black/50 px-2 py-0.5 rounded-full backdrop-blur-sm">Preview</span>
                       </div>
                     )}
                   </div>
@@ -180,9 +188,9 @@ export default async function GalleryDetailPage({ params }: GalleryDetailPagePro
                       </p>
                     )}
 
-                    {gallery.isPaid && asset.downloadUrl && (
+                    {gallery.isPaid && (asset.downloadUrl ?? asset.previewUrl) && (
                       <a
-                        href={asset.downloadUrl}
+                        href={(asset.downloadUrl ?? asset.previewUrl)!}
                         download={asset.filename}
                         className="mt-3 flex items-center justify-center gap-2 w-full rounded-lg bg-[var(--gold)] px-3 py-2 text-sm font-semibold text-black hover:bg-yellow-500 transition"
                       >

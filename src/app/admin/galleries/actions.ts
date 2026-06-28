@@ -8,6 +8,8 @@ import {
   generateS3PreviewUrl,
   downloadS3Object,
   uploadPreviewToS3,
+  s3ObjectExists,
+  deleteS3Object,
 } from "@/lib/s3";
 import { generateWatermarkedPreview } from "@/lib/watermark";
 import { scorePhoto, RELEASE_THRESHOLD } from "@/lib/ai-scoring";
@@ -346,6 +348,43 @@ export async function releaseMediaAssetsAction(galleryId: string) {
   }
 }
 
+// ── Cleanup orphaned DB records (S3 upload failed) ───────────────────────────
+
+/**
+ * Scans all DRAFT media assets for a gallery and deletes DB records
+ * where the S3 object doesn't actually exist (browser PUT failed).
+ * Returns the count of records removed.
+ */
+export async function cleanupOrphanedAssetsAction(galleryId: string) {
+  try {
+    await requireAdmin();
+
+    const assets = await prisma.mediaAsset.findMany({
+      where: { galleryId },
+    });
+
+    const orphaned: string[] = [];
+
+    for (const asset of assets) {
+      const exists = await s3ObjectExists(asset.originalKey);
+      if (!exists) {
+        orphaned.push(asset.id);
+      }
+    }
+
+    if (orphaned.length > 0) {
+      await prisma.mediaAsset.deleteMany({
+        where: { id: { in: orphaned } },
+      });
+    }
+
+    return { success: true, removed: orphaned.length };
+  } catch (error) {
+    console.error("Cleanup failed:", error);
+    return { success: false, error: "Cleanup failed", removed: 0 };
+  }
+}
+
 // ── Client gallery access ─────────────────────────────────────────────────────
 
 export async function getGalleryAccessUrls(
@@ -387,14 +426,18 @@ export async function getGalleryAccessUrls(
         let previewUrl: string | null = null;
         let downloadUrl: string | null = null;
 
+        // Determine which key to use for this asset
+        const keyForPreview = asset.previewKey ?? asset.originalKey;
+
         if (isPaid) {
-          // Full-quality signed download URL (raw or edited folder)
+          // Full-quality signed download URL
           const dl = await generateS3DownloadUrl(asset.originalKey, 3600);
           downloadUrl = dl.downloadUrl ?? null;
+          // Also provide a view URL for the paid gallery image display
+          previewUrl = downloadUrl;
         } else {
-          // Watermarked preview URL
-          const previewKey = asset.previewKey ?? asset.originalKey;
-          const pv = await generateS3PreviewUrl(previewKey, 7200);
+          // Watermarked preview — fall back to original if no preview generated yet
+          const pv = await generateS3PreviewUrl(keyForPreview, 7200);
           previewUrl = pv.previewUrl ?? null;
         }
 
