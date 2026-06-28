@@ -20,7 +20,12 @@ function getS3Client() {
     throw new Error("AWS credentials not configured. Set AWS_REGION, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY.");
   }
 
-  return new S3Client({ region, credentials: { accessKeyId, secretAccessKey } });
+  return new S3Client({
+    region,
+    credentials: { accessKeyId, secretAccessKey },
+    requestChecksumCalculation: "WHEN_REQUIRED",
+    responseChecksumValidation: "WHEN_REQUIRED",
+  });
 }
 
 function getBucket() {
@@ -130,8 +135,6 @@ export async function generateS3UploadUrl(
       Bucket:      bucket,
       Key:         key,
       ContentType: mimeType,
-      // Tags for lifecycle rules and cost allocation
-      Tagging: `bookingId=${bookingId}&folder=${folder}`,
     });
 
     const uploadUrl = await getSignedUrl(s3, command, { expiresIn: 3600 });
