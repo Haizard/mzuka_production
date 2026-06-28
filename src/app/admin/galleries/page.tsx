@@ -120,7 +120,10 @@ export default function AdminGalleriesPage() {
       }
 
       // Step 3 — generate watermarked preview (server-side, photos only)
-      await generatePreviewAction(uploadResult.mediaAsset.id);
+      // Non-blocking — if this fails the upload is still successful
+      generatePreviewAction(uploadResult.mediaAsset.id)
+        .catch((err) => console.error("[galleries] preview generation failed:", err));
+
       await loadGalleries();
 
     } catch (error) {
