@@ -18,7 +18,7 @@ export default async function ClientGalleriesPage() {
     where: { booking: { clientId: user.id } },
     include: {
       booking: { select: { title: true, serviceType: true, paymentStatus: true } },
-      mediaAssets: { select: { id: true, thumbnailUrl: true, type: true }, take: 4 },
+      mediaAssets: { select: { id: true, kind: true }, take: 4 },
     },
     orderBy: { createdAt: "desc" },
   });
@@ -56,45 +56,45 @@ export default async function ClientGalleriesPage() {
             <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3">
               {galleries.map((gallery) => {
                 const isPaid = gallery.booking.paymentStatus === "PAID";
-                const thumbs = gallery.mediaAssets.filter(a => a.thumbnailUrl).slice(0, 4);
+                const assetCount = gallery.mediaAssets.length;
+                const videoCount = gallery.mediaAssets.filter(a => a.kind === "VIDEO").length;
+                const photoCount = assetCount - videoCount;
+                void photoCount;
                 return (
                   <Link
                     key={gallery.id}
                     href={`/client/galleries/${gallery.id}`}
                     className="group relative rounded-2xl border border-white/10 bg-[var(--surface)] overflow-hidden hover:border-[var(--gold)]/30 transition-all duration-200 active:scale-[0.98]"
                   >
-                    {/* Thumbnail preview */}
-                    <div className="aspect-square bg-black/40 relative overflow-hidden">
-                      {thumbs.length > 0 ? (
-                        <div className="grid grid-cols-2 gap-0.5 h-full">
-                          {thumbs.map((asset) => (
-                            // eslint-disable-next-line @next/next/no-img-element
-                            <img
-                              key={asset.id}
-                              src={asset.thumbnailUrl!}
-                              alt=""
-                              className={`w-full h-full object-cover ${!isPaid ? "blur-sm opacity-50" : ""}`}
-                            />
-                          ))}
+                    {/* Visual preview card */}
+                    <div className="aspect-square relative overflow-hidden bg-gradient-to-br from-[var(--surface-strong)] to-black">
+                      {/* Decorative grid pattern */}
+                      <div className="absolute inset-0 grid grid-cols-2 gap-0.5 opacity-20">
+                        {[...Array(4)].map((_, i) => (
+                          <div key={i} className="bg-[var(--gold)]/30 rounded-sm" />
+                        ))}
+                      </div>
+
+                      {/* Center icon */}
+                      <div className="absolute inset-0 flex flex-col items-center justify-center gap-2">
+                        <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${isPaid ? "bg-[var(--gold)]/20" : "bg-white/5"}`}>
+                          {isPaid ? (
+                            <GalleryHorizontalEnd className="h-6 w-6 text-[var(--gold)]" />
+                          ) : (
+                            <Lock className="h-6 w-6 text-amber-400" />
+                          )}
                         </div>
-                      ) : (
-                        <div className="h-full flex items-center justify-center">
-                          <GalleryHorizontalEnd className="h-8 w-8 text-zinc-700" />
-                        </div>
-                      )}
+                        <span className="text-xs text-zinc-400 font-medium">
+                          {assetCount} {assetCount === 1 ? "item" : "items"}
+                        </span>
+                      </div>
 
                       {/* Lock overlay for unpaid */}
                       {!isPaid && (
-                        <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/50 gap-2">
-                          <Lock className="h-7 w-7 text-[var(--gold)]" />
+                        <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-amber-900/60 to-transparent px-3 py-2">
                           <span className="text-[10px] text-amber-300 font-semibold uppercase tracking-wider">Payment Required</span>
                         </div>
                       )}
-
-                      {/* Count badge */}
-                      <div className="absolute top-2 right-2 bg-black/70 text-xs text-zinc-300 px-2 py-0.5 rounded-full backdrop-blur">
-                        {gallery.mediaAssets.length} items
-                      </div>
                     </div>
 
                     {/* Info */}
