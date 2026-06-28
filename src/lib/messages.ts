@@ -18,13 +18,15 @@ import { prisma } from "@/lib/db";
 // ── Clients ───────────────────────────────────────────────────────────────────
 
 function getResend() {
-  return new Resend(process.env.RESEND_API_KEY);
+  const key = process.env.RESEND_API_KEY;
+  if (!key || key.startsWith("replace")) return null;
+  return new Resend(key);
 }
 
 function getTwilio() {
   const sid = process.env.TWILIO_ACCOUNT_SID;
   const token = process.env.TWILIO_AUTH_TOKEN;
-  if (!sid || !token) return null;
+  if (!sid || !token || !sid.startsWith("AC")) return null;
   return twilio(sid, token);
 }
 
@@ -41,6 +43,10 @@ async function sendEmail(
   html: string
 ) {
   const resend = getResend();
+  if (!resend) {
+    console.warn("[messages] Resend not configured — skipping email to", to);
+    return;
+  }
   const { error } = await resend.emails.send({ from: FROM_EMAIL, to, subject, html });
 
   await prisma.message.create({

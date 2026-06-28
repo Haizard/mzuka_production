@@ -411,8 +411,9 @@ export async function getGalleryAccessUrls(
 
     if (!gallery) return { success: false, error: "Gallery not found", mediaAssets: [] };
 
-    // Ownership check
-    if (gallery.booking.clientId !== user.id) {
+    // Ownership check — admins can view any gallery, clients only their own
+    const isAdmin = ["FOUNDER", "ADMIN", "STAFF"].includes(user.role);
+    if (!isAdmin && gallery.booking.clientId !== user.id) {
       return { success: false, error: "Unauthorized", mediaAssets: [] };
     }
 
