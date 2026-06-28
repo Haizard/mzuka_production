@@ -56,42 +56,77 @@ Be strict. A score above 85 means print-ready. Below 60 means it should be retak
 Respond with ONLY the JSON object, no markdown, no explanation.
 `.trim();
 
+/**
+ * Returns a placeholder score when OpenAI is not configured.
+ * Scores are 0 so no asset is auto-released without a real analysis.
+ */
+function placeholderScore(reason: string): PhotoScores {
+  return {
+    sharpness: 0,
+    lighting: 0,
+    faceQuality: null,
+    composition: 0,
+    colorGrade: 0,
+    background: 0,
+    emotion: null,
+    overallScore: 0,
+    notes: `[AI unavailable — ${reason}] Manual review required.`,
+    recommendRelease: false,
+  };
+}
+
 export async function scorePhoto(
   imageBase64: string,
   mimeType: string = "image/jpeg"
 ): Promise<PhotoScores> {
+  if (!process.env.OPENAI_API_KEY) {
+    console.warn("[ai-scoring] OPENAI_API_KEY not set — returning placeholder scores.");
+    return placeholderScore("OPENAI_API_KEY not configured");
+  }
+
   const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
-  const response = await client.chat.completions.create({
-    model: "gpt-4o",
-    max_tokens: 300,
-    messages: [
-      {
-        role: "user",
-        content: [
-          {
-            type: "text",
-            text: SCORING_PROMPT,
-          },
-          {
-            type: "image_url",
-            image_url: {
-              url: `data:${mimeType};base64,${imageBase64}`,
-              detail: "low", // cost-efficient; sufficient for quality grading
+  let response;
+  try {
+    response = await client.chat.completions.create({
+      model: "gpt-4o",
+      max_tokens: 300,
+      messages: [
+        {
+          role: "user",
+          content: [
+            { type: "text", text: SCORING_PROMPT },
+            {
+              type: "image_url",
+              image_url: {
+                url: `data:${mimeType};base64,${imageBase64}`,
+                detail: "low",
+              },
             },
-          },
-        ],
-      },
-    ],
-  });
+          ],
+        },
+      ],
+    });
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error("[ai-scoring] OpenAI request failed:", msg);
+    return placeholderScore(`API error: ${msg.slice(0, 120)}`);
+  }
 
   const raw = response.choices[0]?.message?.content?.trim() ?? "";
 
+  // Strip markdown code fences if present (```json ... ```)
+  const jsonText = raw
+    .replace(/^```(?:json)?\s*/i, "")
+    .replace(/```\s*$/, "")
+    .trim();
+
   let parsed: Record<string, unknown>;
   try {
-    parsed = JSON.parse(raw);
+    parsed = JSON.parse(jsonText);
   } catch {
-    throw new Error(`OpenAI returned non-JSON: ${raw.slice(0, 200)}`);
+    console.error("[ai-scoring] Could not parse OpenAI response:", raw.slice(0, 300));
+    return placeholderScore("non-JSON response from AI");
   }
 
   const scores: PhotoScores = {

@@ -1,4 +1,4 @@
-import { User, Mail, Phone, Shield, CheckCircle, Clock, LogOut, CalendarDays } from "lucide-react";
+import { Mail, Phone, Shield, CheckCircle, Clock, LogOut, CalendarDays } from "lucide-react";
 import { requireApprovedUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { logoutAction } from "@/app/(auth)/actions";
@@ -12,9 +12,13 @@ function formatDate(date: Date) {
 export default async function ProfilePage() {
   const user = await requireApprovedUser();
 
-  const [bookingCount, galleryCount] = await Promise.all([
+  const [bookingCount, galleryCount, fullUser] = await Promise.all([
     prisma.booking.count({ where: { clientId: user.id } }),
     prisma.gallery.count({ where: { booking: { clientId: user.id } } }),
+    prisma.user.findUnique({
+      where: { id: user.id },
+      select: { emailVerifiedAt: true, phoneVerifiedAt: true },
+    }),
   ]);
 
   const initials = user.name
@@ -72,12 +76,12 @@ export default async function ProfilePage() {
             <div className="w-9 h-9 rounded-xl bg-white/5 flex items-center justify-center shrink-0">
               <Mail className="h-4 w-4 text-zinc-400" />
             </div>
-            <div className="min-w-0">
+            <div className="min-w-0 flex-1">
               <p className="text-xs text-zinc-500">Email</p>
               <p className="text-sm text-white truncate">{user.email}</p>
             </div>
-            {user.emailVerifiedAt && (
-              <CheckCircle className="h-4 w-4 text-emerald-400 shrink-0 ml-auto" />
+            {fullUser?.emailVerifiedAt && (
+              <CheckCircle className="h-4 w-4 text-emerald-400 shrink-0" />
             )}
           </div>
 
@@ -85,10 +89,13 @@ export default async function ProfilePage() {
             <div className="w-9 h-9 rounded-xl bg-white/5 flex items-center justify-center shrink-0">
               <Phone className="h-4 w-4 text-zinc-400" />
             </div>
-            <div className="min-w-0">
+            <div className="min-w-0 flex-1">
               <p className="text-xs text-zinc-500">Phone</p>
               <p className="text-sm text-white">{user.phone ?? "Not provided"}</p>
             </div>
+            {fullUser?.phoneVerifiedAt && (
+              <CheckCircle className="h-4 w-4 text-emerald-400 shrink-0" />
+            )}
           </div>
         </div>
 
@@ -140,7 +147,6 @@ export default async function ProfilePage() {
           </button>
         </form>
 
-        {/* Privacy note */}
         <p className="mt-4 text-center text-xs text-zinc-600">
           All gallery previews carry a dynamic watermark linked to your account.
         </p>

@@ -40,7 +40,7 @@ export default async function BookingDetailPage({
   const totalAmount = booking.payments.reduce((sum, p) => sum + p.amountCents, 0);
 
   return (
-    <main className="min-h-dvh bg-[var(--background)] px-4 py-6 text-white sm:px-6 lg:px-8">
+    <main className="min-h-dvh bg-[var(--background)] px-4 py-6 text-white sm:px-6 lg:px-8 pb-24 lg:pb-6">
       <section className="mx-auto max-w-3xl">
         <Link href="/client/bookings" className="inline-flex items-center gap-2 text-sm text-zinc-400 hover:text-white transition">
           <ArrowLeft className="h-4 w-4" />
