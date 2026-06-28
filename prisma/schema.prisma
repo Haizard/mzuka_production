@@ -102,6 +102,7 @@ model User {
   contracts       Contract[]       @relation("ClientContracts")
   aiChats         AiChat[]         @relation("UserChats")
   isProductionManager Boolean      @default(false)
+  staffRole           String?      // ADMIN | PRODUCTION_MANAGER | PHOTOGRAPHER | VIDEO_EDITOR | EDITOR | COORDINATOR
   equipmentAssignments EquipmentAssignment[] @relation("EquipmentAssignee")
   equipmentReturnsRequested EquipmentReturn[] @relation("ReturnRequester")
   equipmentReturnsReviewed  EquipmentReturn[] @relation("ReturnReviewer")
