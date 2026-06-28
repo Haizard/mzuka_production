@@ -110,7 +110,7 @@ export default function AdminBookingsPage() {
     <main className="space-y-6">
       {/* Stats */}
       {stats && (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-6">
+        <div className="grid gap-4 grid-cols-2 lg:grid-cols-6">
           {[
             { label: "Total", value: stats.total },
             { label: "Pending", value: stats.requested },
@@ -187,7 +187,7 @@ export default function AdminBookingsPage() {
 
                   {expandedId === booking.id && (
                     <div className="border-t border-white/10 p-4 bg-white/5 space-y-4">
-                      <div className="grid gap-4 sm:grid-cols-2">
+                      <div className="grid gap-4 grid-cols-2">
                         <div>
                           <p className="text-xs text-zinc-500 uppercase mb-1">Service Type</p>
                           <p className="text-white capitalize">{booking.serviceType}</p>

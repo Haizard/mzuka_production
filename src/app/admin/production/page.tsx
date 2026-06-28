@@ -116,7 +116,7 @@ export default function ProductionPage() {
 
       {/* Stats */}
       {stats && (
-        <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-6">
+        <div className="grid gap-3 grid-cols-2 sm:grid-cols-3 lg:grid-cols-6">
           {[
             { label: "Total",     value: stats.total,     colour: "text-white" },
             { label: "Shooting",  value: stats.shooting,  colour: "text-blue-400" },

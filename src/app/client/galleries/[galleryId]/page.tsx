@@ -137,7 +137,7 @@ export default async function GalleryDetailPage({ params }: GalleryDetailPagePro
               </div>
             )}
 
-            <div className="mg-protected-gallery grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="mg-protected-gallery grid gap-4 grid-cols-2 lg:grid-cols-3">
               {mediaAssets.map((asset) => (
                 <div
                   key={asset.id}

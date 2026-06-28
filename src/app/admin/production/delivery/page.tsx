@@ -113,7 +113,7 @@ export default function DeliveryPage() {
       </div>
 
       {/* Stats */}
-      <div className="grid gap-3 sm:grid-cols-4">
+      <div className="grid gap-3 grid-cols-2 sm:grid-cols-4">
         {[
           { label: "Total",     value: total,     colour: "text-white",         icon: PackageCheck },
           { label: "Delivered", value: delivered, colour: "text-emerald-400",   icon: CheckCircle2 },

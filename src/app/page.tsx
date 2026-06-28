@@ -19,7 +19,7 @@ export default function Home() {
       <Testimonials />
       <Pricing />
       <CTA />
-      <Footer />
+      <div className="hidden lg:block"><Footer /></div>
       <MobileHomeBottomBar />
     </main>
   );
@@ -241,7 +241,7 @@ function Services() {
           </p>
         </div>
 
-        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-6 grid-cols-2 lg:grid-cols-4">
           {services.map((s) => (
             <div key={s.title}
               className="group relative rounded-2xl border border-white/10 bg-[var(--surface)] p-6 hover:border-[var(--gold)]/40 hover:bg-[var(--surface-strong)] transition-all duration-300">
@@ -288,7 +288,7 @@ function HowItWorks() {
           </p>
         </div>
 
-        <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-8 grid-cols-2 lg:grid-cols-4">
           {steps.map((step, i) => (
             <div key={step.num} className="relative">
               {/* Connector line */}
@@ -499,7 +499,7 @@ function Testimonials() {
           <h2 className="text-4xl sm:text-5xl font-bold text-white">What Our Clients Say</h2>
         </div>
 
-        <div className="grid gap-6 md:grid-cols-3">
+        <div className="grid gap-6 grid-cols-2 md:grid-cols-3">
           {testimonials.map((t) => (
             <div key={t.name} className="rounded-2xl border border-white/10 bg-[var(--surface)] p-7 hover:border-[var(--gold)]/30 transition">
               {/* Stars */}
@@ -565,7 +565,7 @@ function Pricing() {
           <p className="mt-4 text-zinc-400 text-lg">Every package includes private gallery access and AI quality scoring.</p>
         </div>
 
-        <div className="grid gap-6 md:grid-cols-3">
+        <div className="grid gap-6 grid-cols-2 md:grid-cols-3">
           {plans.map((plan) => (
             <div key={plan.name}
               className={`relative rounded-2xl p-8 flex flex-col transition-all duration-300 ${
@@ -659,7 +659,7 @@ function Footer() {
   return (
     <footer className="border-t border-white/10 bg-black py-16 px-4 sm:px-6 lg:px-8">
       <div className="mx-auto max-w-7xl">
-        <div className="grid gap-12 md:grid-cols-4 mb-12">
+        <div className="grid gap-12 grid-cols-2 md:grid-cols-4 mb-12">
           {/* Brand */}
           <div className="md:col-span-1">
             <div className="flex items-center gap-3 mb-5">

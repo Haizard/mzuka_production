@@ -213,7 +213,7 @@ export default function EquipmentPage() {
             </button>
           </div>
           {loading ? <div className="py-12 text-center text-zinc-500">Loading…</div> : (
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="grid gap-3 grid-cols-2 lg:grid-cols-3">
               {categories.map((cat) => (
                 <CategoryCard key={cat.id} cat={cat} onDelete={deleteCat} onUpdate={async (id, name) => {
                   const res = await updateCategoryAction(id, name);

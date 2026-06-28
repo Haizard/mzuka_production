@@ -220,6 +220,38 @@ a {
   }
 }
 
+/* ── Android 2-column grid: compact card padding on mobile ─────── */
+@media (max-width: 1023px) {
+  /* Reduce large card padding on mobile so 2-col cards don't overflow */
+  .mobile-card-compact {
+    padding: 12px !important;
+  }
+
+  /* Stat cards — tighten padding on mobile */
+  article.rounded-lg,
+  div.rounded-lg.border.border-white\/10.bg-\[var\(--surface\)\] {
+    padding: 12px;
+  }
+
+  /* Reduce large heading sizes on mobile for 2-col layout */
+  .text-3xl.font-semibold,
+  .text-3xl.font-bold {
+    font-size: 1.25rem;
+    line-height: 1.75rem;
+  }
+
+  /* Keep form inputs full width (no 2-col for form fields) */
+  form .grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Ensure 2-col grid items don't overflow */
+  .grid.grid-cols-2 > * {
+    min-width: 0;
+    overflow: hidden;
+  }
+}
+
 /* Hide scrollbar on mobile for horizontal scrollers */
 @media (max-width: 1023px) {
   .hide-scrollbar {

@@ -29,7 +29,7 @@ export default async function AcademyPage() {
       </div>
 
       {/* Stats */}
-      <div className="grid gap-4 sm:grid-cols-3">
+      <div className="grid gap-4 grid-cols-2 sm:grid-cols-3">
         <div className="rounded-lg border border-white/10 bg-[var(--surface)] p-5">
           <p className="text-3xl font-bold text-[var(--gold)]">{modules.length}</p>
           <p className="text-sm text-zinc-400 mt-1">Total Modules</p>
@@ -52,7 +52,7 @@ export default async function AcademyPage() {
           <p className="text-xs text-zinc-600 mt-1">Academy content management is coming in the next update.</p>
         </div>
       ) : (
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-3 grid-cols-2 lg:grid-cols-3">
           {modules.map((mod) => (
             <div key={mod.id} className="rounded-lg border border-white/10 bg-[var(--surface)] p-5">
               <div className="flex items-start justify-between gap-2 mb-3">

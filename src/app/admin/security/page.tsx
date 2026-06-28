@@ -200,7 +200,7 @@ export default function SecurityPage() {
           {tab === "overview" && stats && (
             <div className="space-y-6">
               {/* Stats row */}
-              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
                 {[
                   { label: "Total Gallery Views", value: stats.totalAccess, icon: Eye, colour: "text-blue-400" },
                   { label: "Preview Views", value: stats.previewAccess, icon: Lock, colour: "text-amber-400" },
@@ -409,7 +409,7 @@ export default function SecurityPage() {
                     {isExp && (
                       <div className="px-5 pb-5 border-t border-white/10 space-y-4 pt-4">
                         {/* Toggle row */}
-                        <div className="grid gap-3 sm:grid-cols-2">
+                        <div className="grid gap-3 grid-cols-2">
                           {/* Download toggle */}
                           <div className="flex items-center justify-between p-3 rounded-lg bg-white/5">
                             <div>

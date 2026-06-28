@@ -82,7 +82,7 @@ export default async function ClientPage() {
         )}
 
         {/* ── Stats ── */}
-        <div className="mt-6 grid gap-4 sm:grid-cols-3">
+        <div className="mt-6 grid gap-4 grid-cols-2 sm:grid-cols-3">
           <div className="rounded-lg border border-white/10 bg-[var(--surface)] p-5">
             <CalendarDays className="h-5 w-5 text-[var(--gold)]" />
             <p className="mt-3 text-3xl font-bold">{totalBookings}</p>
@@ -100,7 +100,7 @@ export default async function ClientPage() {
           </div>
         </div>
 
-        <div className="mt-6 grid gap-6 lg:grid-cols-3">
+        <div className="mt-6 grid gap-6 grid-cols-2 lg:grid-cols-3">
 
           {/* ── Bookings ── */}
           <div className="lg:col-span-2 space-y-4">
@@ -185,7 +185,7 @@ export default async function ClientPage() {
                 <div className="flex items-center justify-between">
                   <h2 className="font-semibold text-white">Your Galleries</h2>
                 </div>
-                <div className="grid gap-3 sm:grid-cols-2">
+                <div className="grid gap-3 grid-cols-2">
                   {galleries.map((gallery) => {
                     const expired = gallery.expiresAt ? new Date(gallery.expiresAt) < new Date() : false;
                     return (

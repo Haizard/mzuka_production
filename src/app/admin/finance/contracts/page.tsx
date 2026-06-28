@@ -137,7 +137,7 @@ export default function ContractsPage() {
       </div>
 
       {/* Stats row */}
-      <div className="grid gap-3 sm:grid-cols-5">
+      <div className="grid gap-3 grid-cols-2 sm:grid-cols-5">
         {(["ALL","DRAFT","SENT","SIGNED","EXPIRED"] as const).map((s) => {
           const count = s === "ALL" ? contracts.length : contracts.filter((c) => c.status === s).length;
           return (

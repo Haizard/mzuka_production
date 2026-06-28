@@ -102,7 +102,7 @@ export default async function AnalyticsPage() {
       </div>
 
       {/* KPI grid */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
         {[
           { label: "Approved Clients",  value: data.totals.clients,                  icon: Users,                colour: "text-blue-400",    border: "border-blue-500/20" },
           { label: "Total Bookings",    value: data.totals.bookings,                 icon: CalendarDays,         colour: "text-violet-400",  border: "border-violet-500/20" },

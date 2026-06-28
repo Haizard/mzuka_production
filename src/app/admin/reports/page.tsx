@@ -98,7 +98,7 @@ Tone: strategic and actionable.\n\n${dataContext}`,
       <div className="rounded-lg border border-white/10 bg-[var(--surface)] p-6 space-y-4">
         <div>
           <label className="block text-xs text-zinc-400 mb-1.5">Report Type</label>
-          <div className="grid gap-3 sm:grid-cols-2">
+          <div className="grid gap-3 grid-cols-2">
             {[
               { id: "monthly_summary",   label: "Monthly Summary",     desc: "Full overview of the month" },
               { id: "financial_report",  label: "Financial Report",     desc: "Revenue, expenses & profit" },

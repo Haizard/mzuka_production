@@ -106,7 +106,7 @@ export default async function FounderPage() {
       )}
 
       {/* Key metrics */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
         {[
           { label: "Total Revenue",    value: usd(data.totalRevenue),  colour: "text-emerald-400", border: "border-emerald-500/20" },
           { label: "Total Bookings",   value: data.totalBookings,       colour: "text-violet-400",  border: "border-violet-500/20" },
@@ -123,7 +123,7 @@ export default async function FounderPage() {
       {/* Command grid */}
       <div>
         <h3 className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-3">All Modules</h3>
-        <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-4">
+        <div className="grid gap-3 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4">
           {commandModules.map((mod) => (
             <Link key={mod.href} href={mod.href}
               className="rounded-lg border border-white/10 bg-[var(--surface)] p-4 hover:border-[var(--gold)]/40 hover:bg-[var(--gold)]/5 transition group">

@@ -106,7 +106,7 @@ export default function ReturnsPage() {
                 <span className="text-xs px-2 py-1 rounded-full bg-amber-500/15 text-amber-300 shrink-0">Pending</span>
               </div>
 
-              <div className="grid gap-2 sm:grid-cols-3 text-sm mb-4">
+              <div className="grid gap-2 grid-cols-2 sm:grid-cols-3 text-sm mb-4">
                 <div>
                   <p className="text-xs text-zinc-500">Staff Member</p>
                   <p className="text-white">{r.requestedBy.name}</p>

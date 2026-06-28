@@ -62,7 +62,7 @@ export default async function AdminPage() {
           </div>
         </header>
 
-        <section className="mt-6 grid gap-4 md:grid-cols-4">
+        <section className="mt-6 grid gap-4 grid-cols-2 md:grid-cols-4">
           {stats.map((stat) => (
             <article
               className="rounded-lg border border-white/10 bg-[var(--surface)] p-5"
@@ -75,7 +75,7 @@ export default async function AdminPage() {
           ))}
         </section>
 
-        <section className="mt-6 grid gap-4 lg:grid-cols-3">
+        <section className="mt-6 grid gap-4 grid-cols-2 lg:grid-cols-3">
           <AdminModule
             icon={UserCheck}
             title="Client Approval"

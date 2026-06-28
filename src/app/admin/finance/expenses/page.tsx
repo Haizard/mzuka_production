@@ -102,7 +102,7 @@ export default function ExpensesPage() {
 
       {/* Category breakdown */}
       {grouped.length > 0 && (
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-3 grid-cols-2 lg:grid-cols-4">
           {grouped.map((g) => (
             <button key={g.category}
               onClick={() => setFilter(filter === g.category ? "ALL" : g.category)}

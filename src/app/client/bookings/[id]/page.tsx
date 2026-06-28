@@ -62,7 +62,7 @@ export default async function BookingDetailPage({
           </div>
         )}
 
-        <div className="grid gap-6 md:grid-cols-3">
+        <div className="grid gap-6 grid-cols-2 md:grid-cols-3">
           {/* Main Content */}
           <div className="md:col-span-2 space-y-6">
             {/* Status Card */}

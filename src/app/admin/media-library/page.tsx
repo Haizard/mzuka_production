@@ -79,7 +79,7 @@ export default async function MediaLibraryPage() {
       </div>
 
       {/* Stats */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+      <div className="grid gap-4 grid-cols-2 lg:grid-cols-5">
         {[
           { label: "Total Assets",   value: data.totalAssets,   icon: GalleryHorizontalEnd, colour: "text-white" },
           { label: "Photos",         value: data.photos,         icon: Camera,               colour: "text-blue-400" },

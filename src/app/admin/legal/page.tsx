@@ -53,7 +53,7 @@ export default function LegalPage() {
       </div>
 
       {/* Quick links */}
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid gap-4 grid-cols-2">
         <Link href="/admin/finance/contracts"
           className="rounded-lg border border-[var(--gold)]/30 bg-[var(--gold)]/5 p-5 hover:bg-[var(--gold)]/10 transition flex items-center gap-4">
           <div className="w-12 h-12 rounded-lg bg-[var(--gold)] flex items-center justify-center text-black shrink-0">

@@ -150,7 +150,7 @@ export default function AiPage() {
 
       {/* ── AI CHAT ── */}
       {tool === "chat" && (
-        <div className="grid gap-4 lg:grid-cols-4" style={{ height: "calc(100vh - 280px)", minHeight: "500px" }}>
+        <div className="grid gap-4 grid-cols-2 lg:grid-cols-4" style={{ height: "calc(100vh - 280px)", minHeight: "500px" }}>
           {/* Sidebar: chat list */}
           <div className="lg:col-span-1 rounded-lg border border-white/10 bg-[var(--surface)] flex flex-col overflow-hidden">
             <div className="flex items-center justify-between px-4 py-3 border-b border-white/10">
@@ -265,7 +265,7 @@ export default function AiPage() {
       {/* ── CAPTION GENERATOR ── */}
       {tool === "caption" && (
         <ToolCard title="Caption Generator" icon={Hash} onRun={runTool} loading={loading} result={result} onCopy={copyResult} copied={copied}>
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid gap-4 grid-cols-2">
             <div>
               <label className="block text-xs text-zinc-400 mb-1.5">Subject / Topic</label>
               <input value={caption.subject} onChange={(e) => setCaption((p) => ({ ...p, subject: e.target.value }))}
@@ -300,7 +300,7 @@ export default function AiPage() {
       {/* ── SCRIPT GENERATOR ── */}
       {tool === "script" && (
         <ToolCard title="Script Writer" icon={Scissors} onRun={runTool} loading={loading} result={result} onCopy={copyResult} copied={copied}>
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid gap-4 grid-cols-2">
             <div>
               <label className="block text-xs text-zinc-400 mb-1.5">Topic</label>
               <input value={script.topic} onChange={(e) => setScript((p) => ({ ...p, topic: e.target.value }))}

@@ -88,7 +88,7 @@ export default function FinancePage() {
       ) : summary ? (
         <>
           {/* Top KPI cards */}
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
             <KpiCard
               label="Total Revenue"
               value={usd(summary.totalRevenue)}
@@ -124,14 +124,14 @@ export default function FinancePage() {
           </div>
 
           {/* Invoice status + quick nav */}
-          <div className="grid gap-4 sm:grid-cols-3">
+          <div className="grid gap-4 grid-cols-2 sm:grid-cols-3">
             <InvoicePill label="Unpaid Invoices"  value={summary.unpaidInvoices}  colour="text-amber-400"  href="/admin/finance/invoices" />
             <InvoicePill label="Overdue Invoices" value={summary.overdueInvoices} colour="text-red-400"    href="/admin/finance/invoices" />
             <InvoicePill label="Paid Invoices"    value={summary.paidInvoices}    colour="text-emerald-400" href="/admin/finance/invoices" />
           </div>
 
           {/* Quick links */}
-          <div className="grid gap-4 sm:grid-cols-3">
+          <div className="grid gap-4 grid-cols-2 sm:grid-cols-3">
             <QuickLink href="/admin/finance/invoices"  icon={Receipt}    label="Invoices"  desc="Create, send, and track client invoices" />
             <QuickLink href="/admin/finance/expenses"  icon={TrendingDown} label="Expenses" desc="Record and categorise studio expenses" />
             <QuickLink href="/admin/finance/contracts" icon={FileText}   label="Contracts" desc="Draft, send, and store digital agreements" />
