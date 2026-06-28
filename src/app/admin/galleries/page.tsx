@@ -273,10 +273,11 @@ export default function AdminGalleriesPage() {
                     {/* Upload */}
                     <label className="flex-1 min-w-[180px] relative cursor-pointer">
                       <input
+                        key={`upload-${gallery.id}`}
                         type="file"
                         accept="image/jpeg,image/jpg,image/png,image/webp,video/mp4,video/quicktime,video/x-matroska"
                         onChange={(e) => handleFileUpload(e, gallery.id)}
-                        disabled={uploadingId === gallery.id}
+                        disabled={uploadingId !== null}
                         className="hidden"
                       />
                       <div className="border-2 border-dashed border-white/10 hover:border-[var(--gold)]/40 rounded-lg p-4 text-center transition">
