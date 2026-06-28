@@ -161,7 +161,7 @@ export async function generatePreviewAction(mediaAssetId: string) {
     }
     if (asset.previewKey) return { success: true, skipped: true }; // already done
 
-    const originalsBucket = process.env.AWS_S3_BUCKET_PRIVATE_ORIGINALS;
+    const originalsBucket = process.env.AWS_S3_BUCKET;
     if (!originalsBucket) return { success: false, error: "S3 bucket not configured" };
 
     // Pull original bytes
