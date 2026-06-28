@@ -366,9 +366,16 @@ export async function cleanupOrphanedAssetsAction(galleryId: string) {
     const orphaned: string[] = [];
 
     for (const asset of assets) {
-      const exists = await s3ObjectExists(asset.originalKey);
-      if (!exists) {
-        orphaned.push(asset.id);
+      // An asset is orphaned if it has no previewKey (upload failed or preview never generated)
+      // OR if the original S3 object doesn't actually exist
+      const hasPreview = !!asset.previewKey;
+      if (!hasPreview) {
+        // Check if the original even made it to S3
+        const exists = await s3ObjectExists(asset.originalKey);
+        if (!exists) {
+          orphaned.push(asset.id);
+        }
+        // If original IS in S3 but no preview, leave it (admin can retry)
       }
     }
 

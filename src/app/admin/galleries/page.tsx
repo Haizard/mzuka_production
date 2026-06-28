@@ -296,8 +296,8 @@ export default function AdminGalleriesPage() {
                     </label>
 
                     <div className="flex flex-col gap-2">
-                      {/* Cleanup failed uploads */}
-                      {gallery.mediaAssets.some((a) => !a.previewKey && a.kind === "PHOTO") && (
+                      {/* Cleanup failed uploads — show if any asset has no previewKey */}
+                      {gallery.mediaAssets.some((a) => !a.previewKey) && (
                         <button
                           onClick={() => handleCleanup(gallery.id)}
                           disabled={cleanupLoading === gallery.id}
