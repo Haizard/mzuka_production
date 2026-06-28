@@ -18,9 +18,9 @@ export default async function RegisterPage() {
     <AuthCard
       footerHref="/login"
       footerLabel="Sign in"
-      footerText="Already approved?"
-      subtitle="Every client needs an account and Muzuka Gilbert approval before viewing private work."
-      title="Request access"
+      footerText="Already have an account?"
+      subtitle="Use Google for instant access, or register with email for admin-reviewed access."
+      title="Get started"
     >
       <RegisterForm />
     </AuthCard>
