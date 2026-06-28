@@ -5,19 +5,17 @@ import { getBookingById } from "@/app/client/actions";
 export const dynamic = "force-dynamic";
 
 interface BookingDetailPageProps {
-  params: {
-    id: string;
-  };
-  searchParams: {
-    payment_success?: string;
-  };
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ payment_success?: string }>;
 }
 
 export default async function BookingDetailPage({
   params,
   searchParams,
 }: BookingDetailPageProps) {
-  const result = await getBookingById(params.id);
+  const { id } = await params;
+  const sp = await searchParams;
+  const result = await getBookingById(id);
 
   if (!result.success || !result.booking) {
     return (
@@ -54,7 +52,7 @@ export default async function BookingDetailPage({
           <h1 className="mt-2 text-3xl font-semibold">{booking.title}</h1>
         </header>
 
-        {searchParams.payment_success && (
+        {sp.payment_success && (
           <div className="mb-6 rounded-lg border border-emerald-500/20 bg-emerald-500/10 p-4 flex items-start gap-3">
             <CheckCircle className="h-5 w-5 text-emerald-400 flex-shrink-0 mt-0.5" />
             <div>

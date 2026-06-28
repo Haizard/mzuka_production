@@ -7,18 +7,17 @@ import { BookingReminders } from "@/components/booking-reminders";
 export const dynamic = "force-dynamic";
 
 interface AdminBookingDetailPageProps {
-  params: {
-    id: string;
-  };
+  params: Promise<{ id: string }>;
 }
 
 export default async function AdminBookingDetailPage({
   params,
 }: AdminBookingDetailPageProps) {
   await requireAdmin();
+  const { id } = await params;
 
   const booking = await prisma.booking.findUnique({
-    where: { id: params.id },
+    where: { id },
     include: {
       client: true,
       package: true,
