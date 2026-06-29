@@ -86,9 +86,23 @@ export async function updateStaffRoleAction(staffId: string, staffRole: string) 
       return { success: false, error: "Can only update roles for staff accounts" };
     }
 
+    // When promoting to ADMIN staffRole, also elevate the UserRole enum so
+    // they gain full admin-level access immediately (session re-validates from DB).
+    // All other staffRoles stay as STAFF in the UserRole enum.
+    const newUserRole = staffRole === "ADMIN" ? "ADMIN" : "STAFF";
+
     await prisma.user.update({
       where: { id: staffId },
-      data: { staffRole },
+      data: { staffRole, role: newUserRole },
+    });
+
+    await prisma.auditLog.create({
+      data: {
+        action: "CLIENT_APPROVED",
+        entity: "User",
+        entityId: staffId,
+        metadata: { staffRole, userRole: newUserRole, updatedByAdmin: true },
+      },
     });
 
     return { success: true };

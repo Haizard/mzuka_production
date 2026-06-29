@@ -5,41 +5,54 @@ import {
   Package, Shield, Clapperboard, CalendarRange, Truck,
   DollarSign, Receipt, TrendingDown, FileText,
   Bot, BarChart2, ImageIcon, ClipboardList,
-  BookOpen, Users, Scale, Crown, Wrench, RotateCcw,
+  BookOpen, Users, Scale, Crown, Wrench, RotateCcw, Wallet,
 } from "lucide-react";
 import { requireAdmin } from "@/lib/auth";
 import { AdminMobileBottomNav } from "@/components/mobile-admin-nav";
 
-const baseNavItems = [
-  { href: "/admin",                     label: "Dashboard",    icon: LayoutDashboard },
-  { href: "/admin/approvals",           label: "Approvals",    icon: UserCheck },
-  { href: "/admin/bookings",            label: "Bookings",     icon: CalendarDays },
-  { href: "/admin/packages",            label: "Packages",     icon: Package },
-  { href: "/admin/galleries",           label: "Galleries",    icon: GalleryHorizontalEnd },
-  { href: "/admin/production",          label: "Production",   icon: Clapperboard },
-  { href: "/admin/production/calendar", label: "Calendar",     icon: CalendarRange },
-  { href: "/admin/production/delivery", label: "Delivery",     icon: Truck },
-  { href: "/admin/finance",             label: "Finance",      icon: DollarSign },
-  { href: "/admin/finance/invoices",    label: "Invoices",     icon: Receipt },
-  { href: "/admin/finance/expenses",    label: "Expenses",     icon: TrendingDown },
-  { href: "/admin/finance/contracts",   label: "Contracts",    icon: FileText },
-  { href: "/admin/ai",                  label: "AI Assistant", icon: Bot },
-  { href: "/admin/analytics",           label: "Analytics",    icon: BarChart2 },
-  { href: "/admin/media-library",       label: "Media Library",icon: ImageIcon },
-  { href: "/admin/reports",             label: "Reports",      icon: ClipboardList },
-  { href: "/admin/academy",             label: "Academy",      icon: BookOpen },
-  { href: "/admin/employees",           label: "Employees",    icon: Users },
-  { href: "/admin/equipment",           label: "Equipment",    icon: Wrench },
-  { href: "/admin/equipment/returns",   label: "Returns",      icon: RotateCcw },
-  { href: "/admin/legal",               label: "Legal",        icon: Scale },
-  { href: "/admin/security",            label: "Security",     icon: Shield },
-];
+const ALL_NAV = [
+  { href: "/admin",                     label: "Dashboard",    icon: LayoutDashboard,       roles: null },
+  { href: "/admin/approvals",           label: "Approvals",    icon: UserCheck,              roles: ["ADMIN","COORDINATOR"] },
+  { href: "/admin/bookings",            label: "Bookings",     icon: CalendarDays,           roles: ["ADMIN","PRODUCTION_MANAGER","PHOTOGRAPHER","COORDINATOR","ASSISTANT"] },
+  { href: "/admin/packages",            label: "Packages",     icon: Package,                roles: ["ADMIN"] },
+  { href: "/admin/galleries",           label: "Galleries",    icon: GalleryHorizontalEnd,   roles: ["ADMIN","PRODUCTION_MANAGER","PHOTOGRAPHER","VIDEO_EDITOR","EDITOR"] },
+  { href: "/admin/production",          label: "Production",   icon: Clapperboard,           roles: ["ADMIN","PRODUCTION_MANAGER","PHOTOGRAPHER","VIDEO_EDITOR","EDITOR","COORDINATOR"] },
+  { href: "/admin/production/calendar", label: "Calendar",     icon: CalendarRange,          roles: ["ADMIN","PRODUCTION_MANAGER","PHOTOGRAPHER","COORDINATOR"] },
+  { href: "/admin/production/delivery", label: "Delivery",     icon: Truck,                  roles: ["ADMIN","PRODUCTION_MANAGER","COORDINATOR","DRIVER"] },
+  { href: "/admin/finance",             label: "Finance",      icon: DollarSign,             roles: ["ADMIN","HUMAN_RESOURCE"] },
+  { href: "/admin/finance/invoices",    label: "Invoices",     icon: Receipt,                roles: ["ADMIN","HUMAN_RESOURCE"] },
+  { href: "/admin/finance/expenses",    label: "Expenses",     icon: TrendingDown,           roles: ["ADMIN","HUMAN_RESOURCE"] },
+  { href: "/admin/finance/contracts",   label: "Contracts",    icon: FileText,               roles: ["ADMIN"] },
+  { href: "/admin/payroll",             label: "Payroll",      icon: Wallet,                 roles: ["ADMIN","HUMAN_RESOURCE"] },
+  { href: "/admin/ai",                  label: "AI Assistant", icon: Bot,                    roles: ["ADMIN","PRODUCTION_MANAGER","VIDEO_EDITOR"] },
+  { href: "/admin/analytics",           label: "Analytics",    icon: BarChart2,              roles: ["ADMIN","HUMAN_RESOURCE"] },
+  { href: "/admin/media-library",       label: "Media Library",icon: ImageIcon,              roles: ["ADMIN","PHOTOGRAPHER","VIDEO_EDITOR","EDITOR"] },
+  { href: "/admin/reports",             label: "Reports",      icon: ClipboardList,          roles: ["ADMIN","HUMAN_RESOURCE"] },
+  { href: "/admin/academy",             label: "Academy",      icon: BookOpen,               roles: null },
+  { href: "/admin/employees",           label: "Employees",    icon: Users,                  roles: ["ADMIN","HUMAN_RESOURCE"] },
+  { href: "/admin/equipment",           label: "Equipment",    icon: Wrench,                 roles: ["ADMIN","PRODUCTION_MANAGER","COORDINATOR","DRIVER"] },
+  { href: "/admin/equipment/returns",   label: "Returns",      icon: RotateCcw,              roles: ["ADMIN","PRODUCTION_MANAGER","COORDINATOR","DRIVER"] },
+  { href: "/admin/legal",               label: "Legal",        icon: Scale,                  roles: ["ADMIN"] },
+  { href: "/admin/security",            label: "Security",     icon: Shield,                 roles: ["ADMIN"] },
+] as const;
 
-export default async function AdminLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+type NavItem = { href: string; label: string; icon: React.ComponentType<{ className?: string }>; roles: readonly string[] | null };
+
+function filterNav(staffRole: string | null, isFounder: boolean): NavItem[] {
+  const items: NavItem[] = ALL_NAV.filter((item) => {
+    if (isFounder || staffRole === "ADMIN" || staffRole === null) return true;
+    if (item.roles === null) return true; // available to everyone
+    return staffRole ? item.roles.includes(staffRole) : false;
+  }) as NavItem[];
+
+  if (isFounder) {
+    items.push({ href: "/admin/founder", label: "Founder HQ", icon: Crown, roles: null });
+  }
+
+  return items;
+}
+
+export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   let user = null;
   try {
     user = await requireAdmin();
@@ -48,10 +61,9 @@ export default async function AdminLayout({
   }
 
   const isFounder = user?.role === "FOUNDER";
-  const navItems = [
-    ...baseNavItems,
-    ...(isFounder ? [{ href: "/admin/founder", label: "Founder HQ", icon: Crown }] : []),
-  ];
+  const staffRole = user?.staffRole ?? null;
+
+  const navItems = filterNav(staffRole, isFounder);
 
   return (
     <div className="min-h-dvh bg-[var(--background)] text-white">
@@ -78,7 +90,7 @@ export default async function AdminLayout({
         </div>
       </div>
 
-      {/* ── Mobile top bar (iOS/Android style) ────────────────── */}
+      {/* ── Mobile top bar ────────────────────────────────────── */}
       <header className="lg:hidden sticky top-0 z-30 flex items-center justify-between bg-[var(--surface)]/95 backdrop-blur-xl border-b border-white/10 px-4 py-3">
         <div className="flex items-center gap-2.5">
           <div className="w-8 h-8 rounded-xl bg-[var(--gold)]/10 border border-[var(--gold)]/30 flex items-center justify-center">
@@ -92,7 +104,7 @@ export default async function AdminLayout({
         <div className="flex items-center gap-2">
           <div className="text-right">
             <p className="text-xs text-zinc-400 font-medium">{user?.name?.split(" ")[0]}</p>
-            <p className="text-[10px] text-zinc-600 capitalize">{user?.role?.toLowerCase()}</p>
+            <p className="text-[10px] text-zinc-600 capitalize">{(staffRole ?? user?.role)?.toLowerCase().replace("_", " ")}</p>
           </div>
           <div className="w-8 h-8 rounded-full bg-[var(--gold)]/20 border border-[var(--gold)]/30 flex items-center justify-center text-[var(--gold)] font-bold text-xs">
             {user?.name?.charAt(0) ?? "A"}
@@ -108,7 +120,10 @@ export default async function AdminLayout({
       </main>
 
       {/* ── Mobile bottom navigation ──────────────────────────── */}
-      <AdminMobileBottomNav isFounder={isFounder} />
+      <AdminMobileBottomNav
+        isFounder={isFounder}
+        filteredNavItems={navItems.map((n) => ({ href: n.href, label: n.label }))}
+      />
     </div>
   );
 }

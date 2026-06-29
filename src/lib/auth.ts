@@ -111,6 +111,7 @@ export async function getCurrentUser() {
       email: true,
       phone: true,
       role: true,
+      staffRole: true,
       approvalStatus: true,
       createdAt: true,
     },

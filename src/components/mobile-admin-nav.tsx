@@ -7,51 +7,62 @@ import {
   LayoutDashboard, CalendarDays, DollarSign, ImageIcon, Menu, X,
   GalleryHorizontalEnd, Package, Clapperboard, Bot, BarChart2,
   ClipboardList, BookOpen, Users, Scale, Shield, Wrench, UserCheck,
-  Receipt, TrendingDown, FileText, CalendarRange, Truck, RotateCcw, Crown,
+  Receipt, TrendingDown, FileText, CalendarRange, Truck, RotateCcw, Crown, Wallet,
 } from "lucide-react";
 
-const primaryTabs = [
-  { href: "/admin",          label: "Dashboard", icon: LayoutDashboard },
-  { href: "/admin/bookings", label: "Bookings",  icon: CalendarDays },
-  { href: "/admin/finance",  label: "Finance",   icon: DollarSign },
-  { href: "/admin/media-library", label: "Media", icon: ImageIcon },
-];
+const ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
+  "/admin":                     LayoutDashboard,
+  "/admin/bookings":            CalendarDays,
+  "/admin/finance":             DollarSign,
+  "/admin/media-library":       ImageIcon,
+  "/admin/approvals":           UserCheck,
+  "/admin/packages":            Package,
+  "/admin/galleries":           GalleryHorizontalEnd,
+  "/admin/production":          Clapperboard,
+  "/admin/production/calendar": CalendarRange,
+  "/admin/production/delivery": Truck,
+  "/admin/finance/invoices":    Receipt,
+  "/admin/finance/expenses":    TrendingDown,
+  "/admin/finance/contracts":   FileText,
+  "/admin/payroll":             Wallet,
+  "/admin/ai":                  Bot,
+  "/admin/analytics":           BarChart2,
+  "/admin/reports":             ClipboardList,
+  "/admin/academy":             BookOpen,
+  "/admin/employees":           Users,
+  "/admin/equipment":           Wrench,
+  "/admin/equipment/returns":   RotateCcw,
+  "/admin/legal":               Scale,
+  "/admin/security":            Shield,
+  "/admin/founder":             Crown,
+};
 
-const allNavItems = [
-  { href: "/admin/approvals",           label: "Approvals",     icon: UserCheck },
-  { href: "/admin/packages",            label: "Packages",      icon: Package },
-  { href: "/admin/galleries",           label: "Galleries",     icon: GalleryHorizontalEnd },
-  { href: "/admin/production",          label: "Production",    icon: Clapperboard },
-  { href: "/admin/production/calendar", label: "Calendar",      icon: CalendarRange },
-  { href: "/admin/production/delivery", label: "Delivery",      icon: Truck },
-  { href: "/admin/finance/invoices",    label: "Invoices",      icon: Receipt },
-  { href: "/admin/finance/expenses",    label: "Expenses",      icon: TrendingDown },
-  { href: "/admin/finance/contracts",   label: "Contracts",     icon: FileText },
-  { href: "/admin/ai",                  label: "AI Assistant",  icon: Bot },
-  { href: "/admin/analytics",           label: "Analytics",     icon: BarChart2 },
-  { href: "/admin/reports",             label: "Reports",       icon: ClipboardList },
-  { href: "/admin/academy",             label: "Academy",       icon: BookOpen },
-  { href: "/admin/employees",           label: "Employees",     icon: Users },
-  { href: "/admin/equipment",           label: "Equipment",     icon: Wrench },
-  { href: "/admin/equipment/returns",   label: "Returns",       icon: RotateCcw },
-  { href: "/admin/legal",               label: "Legal",         icon: Scale },
-  { href: "/admin/security",            label: "Security",      icon: Shield },
-];
+const PRIMARY_HREFS = ["/admin", "/admin/bookings", "/admin/finance", "/admin/media-library"];
 
-export function AdminMobileBottomNav({ isFounder }: { isFounder?: boolean }) {
+interface NavItemDef { href: string; label: string; }
+
+interface Props {
+  isFounder?: boolean;
+  filteredNavItems: NavItemDef[];
+}
+
+export function AdminMobileBottomNav({ filteredNavItems }: Props) {
   const pathname = usePathname();
   const [drawerOpen, setDrawerOpen] = useState(false);
 
-  const items = isFounder
-    ? [...allNavItems, { href: "/admin/founder", label: "Founder HQ", icon: Crown }]
-    : allNavItems;
+  const primaryTabs = PRIMARY_HREFS
+    .filter((h) => filteredNavItems.some((n) => n.href === h))
+    .map((h) => filteredNavItems.find((n) => n.href === h)!);
+
+  const drawerItems = filteredNavItems.filter((n) => !PRIMARY_HREFS.includes(n.href));
 
   return (
     <>
       {/* Bottom nav bar */}
       <nav className="mobile-bottom-nav lg:hidden">
         <div className="flex items-center justify-around py-2">
-          {primaryTabs.map(({ href, label, icon: Icon }) => {
+          {primaryTabs.map(({ href, label }) => {
+            const Icon = ICON_MAP[href] ?? LayoutDashboard;
             const active = href === "/admin" ? pathname === "/admin" : pathname.startsWith(href);
             return (
               <Link
@@ -72,34 +83,31 @@ export function AdminMobileBottomNav({ isFounder }: { isFounder?: boolean }) {
             );
           })}
 
-          {/* More button */}
-          <button
-            onClick={() => setDrawerOpen(true)}
-            className="mobile-tab-item mobile-tab-inactive"
-          >
-            <div className="mobile-tab-icon-wrap">
-              <Menu className="h-5 w-5 text-zinc-500" />
-            </div>
-            <span className="text-[10px] mt-1 font-medium tracking-wide text-zinc-500">More</span>
-          </button>
+          {drawerItems.length > 0 && (
+            <button
+              onClick={() => setDrawerOpen(true)}
+              className="mobile-tab-item mobile-tab-inactive"
+            >
+              <div className="mobile-tab-icon-wrap">
+                <Menu className="h-5 w-5 text-zinc-500" />
+              </div>
+              <span className="text-[10px] mt-1 font-medium tracking-wide text-zinc-500">More</span>
+            </button>
+          )}
         </div>
       </nav>
 
       {/* Slide-up drawer */}
       {drawerOpen && (
         <>
-          {/* Backdrop */}
           <div
             className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm lg:hidden"
             onClick={() => setDrawerOpen(false)}
           />
-          {/* Drawer */}
           <div className="fixed bottom-0 left-0 right-0 z-50 lg:hidden rounded-t-3xl bg-[var(--surface)] border-t border-white/10 max-h-[80dvh] overflow-y-auto mobile-drawer-open">
-            {/* Handle */}
             <div className="flex justify-center pt-3 pb-1">
               <div className="w-10 h-1 rounded-full bg-white/20" />
             </div>
-            {/* Header */}
             <div className="flex items-center justify-between px-5 py-3 border-b border-white/10">
               <p className="text-sm font-semibold text-white tracking-wider">All Sections</p>
               <button
@@ -109,9 +117,9 @@ export function AdminMobileBottomNav({ isFounder }: { isFounder?: boolean }) {
                 <X className="h-4 w-4 text-zinc-300" />
               </button>
             </div>
-            {/* Grid of nav items */}
             <div className="grid grid-cols-3 gap-2 p-4 pb-[calc(env(safe-area-inset-bottom,0px)+1rem)]">
-              {items.map(({ href, label, icon: Icon }) => {
+              {drawerItems.map(({ href, label }) => {
+                const Icon = ICON_MAP[href] ?? LayoutDashboard;
                 const active = pathname.startsWith(href);
                 return (
                   <Link

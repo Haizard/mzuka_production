@@ -51,7 +51,7 @@ export const VIDEO_DELIVERABLES = [
 ];
 
 // ── Photo specs ───────────────────────────────────────────────────────────────
-export const IMAGE_QUALITIES    = ["Standard", "High Resolution", "Ultra High Resolution"];
+export const IMAGE_QUALITIES    = ["Standard", "High Resolution", "4K Export", "Ultra High Resolution"];
 export const EDITING_STYLES     = ["Natural", "Bright", "Dark & Moody", "Vintage", "Luxury", "Cinematic"];
 export const COLOR_STYLES       = ["Natural", "Warm", "Cold", "Black & White"];
 

@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
-import { Sparkles, Loader2, Check, RotateCcw, ChevronDown, ChevronUp } from "lucide-react";
-import { analyzeGalleryAction, analyzeMediaAssetAction, releaseMediaAssetsAction } from "../actions";
+import { useRef, useState } from "react";
+import { Sparkles, Loader2, Check, RotateCcw, ChevronDown, ChevronUp, Upload, X, ImagePlus } from "lucide-react";
+import { analyzeGalleryAction, analyzeMediaAssetAction, releaseMediaAssetsAction, uploadMediaAssetAction, generatePreviewAction } from "../actions";
 
 interface AiScore {
   sharpness: number;
@@ -181,6 +181,158 @@ function PhotoCard({ asset, onAnalyzeSingle }: { asset: AssetRow; onAnalyzeSingl
   );
 }
 
+interface UploadState {
+  file: File;
+  progress: "idle" | "uploading" | "preview" | "done" | "error";
+  error?: string;
+}
+
+function UploadSection({ galleryId, onRefresh }: { galleryId: string; onRefresh: () => void }) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [queue, setQueue]     = useState<UploadState[]>([]);
+  const [running, setRunning] = useState(false);
+  const [done, setDone]       = useState(0);
+
+  const addFiles = (files: FileList | null) => {
+    if (!files) return;
+    const next = Array.from(files)
+      .filter((f) => f.type.startsWith("image/") || f.type.startsWith("video/"))
+      .map((f) => ({ file: f, progress: "idle" as const }));
+    setQueue((q) => [...q, ...next]);
+  };
+
+  const removeQueued = (idx: number) =>
+    setQueue((q) => q.filter((_, i) => i !== idx));
+
+  const uploadAll = async () => {
+    setRunning(true);
+    setDone(0);
+    const pending = queue.filter((u) => u.progress === "idle");
+    for (let i = 0; i < pending.length; i++) {
+      const { file } = pending[i];
+      const mediaKind: "PHOTO" | "VIDEO" = file.type.startsWith("image/") ? "PHOTO" : "VIDEO";
+
+      setQueue((q) =>
+        q.map((u) => (u.file === file ? { ...u, progress: "uploading" } : u))
+      );
+
+      try {
+        const result = await uploadMediaAssetAction(galleryId, file.name, file.type, mediaKind, undefined, undefined, file.size);
+        if (!result.success || !result.uploadUrl) throw new Error(result.error ?? "Upload failed");
+
+        await fetch(result.uploadUrl, {
+          method: "PUT",
+          body: file,
+          headers: { "Content-Type": file.type },
+        });
+
+        setQueue((q) =>
+          q.map((u) => (u.file === file ? { ...u, progress: "preview" } : u))
+        );
+
+        if (mediaKind === "PHOTO" && result.mediaAsset?.id) {
+          await generatePreviewAction(result.mediaAsset.id as string);
+        }
+
+        setQueue((q) =>
+          q.map((u) => (u.file === file ? { ...u, progress: "done" } : u))
+        );
+        setDone((d) => d + 1);
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : "Upload error";
+        setQueue((q) =>
+          q.map((u) => (u.file === file ? { ...u, progress: "error", error: msg } : u))
+        );
+      }
+    }
+    setRunning(false);
+    await onRefresh();
+    setTimeout(() => {
+      setQueue((q) => q.filter((u) => u.progress !== "done"));
+    }, 2000);
+  };
+
+  const pendingCount = queue.filter((u) => u.progress === "idle").length;
+
+  return (
+    <div className="rounded-2xl border border-white/10 bg-[var(--surface)] p-4 space-y-3">
+      <div className="flex items-center justify-between">
+        <p className="text-sm font-semibold text-white flex items-center gap-2">
+          <ImagePlus className="h-4 w-4 text-[var(--gold)]" />
+          Upload Media
+        </p>
+        <button
+          onClick={() => inputRef.current?.click()}
+          className="text-xs px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/15 text-zinc-300 transition"
+        >
+          Choose files
+        </button>
+        <input
+          ref={inputRef}
+          type="file"
+          multiple
+          accept="image/*,video/*"
+          className="hidden"
+          onChange={(e) => addFiles(e.target.files)}
+        />
+      </div>
+
+      {queue.length === 0 && (
+        <button
+          onClick={() => inputRef.current?.click()}
+          className="w-full border-2 border-dashed border-white/10 hover:border-[var(--gold)]/30 rounded-xl py-6 flex flex-col items-center gap-2 text-zinc-500 hover:text-zinc-300 transition"
+        >
+          <Upload className="h-6 w-6" />
+          <span className="text-sm">Click or drag photos &amp; videos here</span>
+        </button>
+      )}
+
+      {queue.length > 0 && (
+        <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
+          {queue.map((u, idx) => (
+            <div key={idx} className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white/5 border border-white/8">
+              <div className="text-base shrink-0">
+                {u.file.type.startsWith("image/") ? "📷" : "🎥"}
+              </div>
+              <p className="text-xs text-zinc-300 truncate flex-1">{u.file.name}</p>
+              <span className={`text-[10px] font-semibold shrink-0 ${
+                u.progress === "done"     ? "text-emerald-400" :
+                u.progress === "error"    ? "text-red-400" :
+                u.progress === "idle"     ? "text-zinc-500" :
+                "text-amber-400"
+              }`}>
+                {u.progress === "uploading" ? "↑ uploading…" :
+                 u.progress === "preview"   ? "⚙ preview…" :
+                 u.progress === "done"      ? "✓ done" :
+                 u.progress === "error"     ? (u.error ?? "error") :
+                 `${(u.file.size / 1024 / 1024).toFixed(1)} MB`}
+              </span>
+              {u.progress === "idle" && (
+                <button onClick={() => removeQueued(idx)} className="p-1 hover:text-red-400 text-zinc-600 transition">
+                  <X className="h-3 w-3" />
+                </button>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {pendingCount > 0 && (
+        <button
+          onClick={uploadAll}
+          disabled={running}
+          className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-[var(--gold)] hover:bg-yellow-400 text-black text-sm font-semibold transition disabled:opacity-60"
+        >
+          {running
+            ? <><Loader2 className="h-4 w-4 animate-spin" /> Uploading {done + 1} of {pendingCount}…</>
+            : <><Upload className="h-4 w-4" /> Upload {pendingCount} file{pendingCount !== 1 ? "s" : ""}</>
+          }
+        </button>
+      )}
+    </div>
+  );
+}
+
 export function AnalysisPanel({ galleryId, assets, draftCount, onRefresh }: Props) {
   const [analyzingAll, setAnalyzingAll]   = useState(false);
   const [releasing, setReleasing]         = useState(false);
@@ -222,6 +374,9 @@ export function AnalysisPanel({ galleryId, assets, draftCount, onRefresh }: Prop
 
   return (
     <div className="space-y-4">
+      {/* Upload section */}
+      <UploadSection galleryId={galleryId} onRefresh={onRefresh} />
+
       {/* Summary stats */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {[

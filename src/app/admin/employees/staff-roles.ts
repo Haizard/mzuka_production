@@ -7,6 +7,7 @@ export const STAFF_ROLES = [
   { value: "COORDINATOR",        label: "Coordinator",        colour: "bg-emerald-500/15 text-emerald-300" },
   { value: "DRIVER",             label: "Driver",             colour: "bg-amber-500/15 text-amber-300" },
   { value: "ASSISTANT",          label: "Assistant",          colour: "bg-zinc-500/15 text-zinc-400" },
+  { value: "HUMAN_RESOURCE",     label: "Human Resource",     colour: "bg-rose-500/15 text-rose-300" },
 ] as const;
 
 export type StaffRoleValue = (typeof STAFF_ROLES)[number]["value"];
