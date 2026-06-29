@@ -66,9 +66,11 @@ export default function RootLayout({
         <meta name="apple-mobile-web-app-title" content="MG MUZUKA GILBERT" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
         <meta name="msapplication-TileColor" content="#050505" />
+        <meta name="msapplication-TileImage" content="/brand/mg-logo-512.png" />
         <meta name="msapplication-tap-highlight" content="no" />
         <meta name="theme-color" content="#d4af37" />
         <link rel="manifest" href="/manifest.webmanifest" />
+        <link rel="shortcut icon" href="/brand/mg-logo-192.png" />
         <link rel="icon" href="/brand/mg-logo-192.png" sizes="192x192" />
         <link rel="icon" href="/brand/mg-logo-512.png" sizes="512x512" />
         <link rel="apple-touch-icon" href="/brand/mg-logo-apple-touch-icon.png" />
