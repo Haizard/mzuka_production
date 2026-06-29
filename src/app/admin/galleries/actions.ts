@@ -268,11 +268,21 @@ export async function analyzeMediaAssetAction(mediaAssetId: string, forceReanaly
   }
 }
 
+type GalleryAnalysisItem = {
+  id: string;
+  filename: string;
+  cached?: boolean;
+  analysis?: unknown;
+};
+
 /**
  * Runs AI scoring on all unanalysed PHOTO assets in a gallery
  * and returns a summary with per-asset scores.
  */
-export async function analyzeGalleryAction(galleryId: string) {
+export async function analyzeGalleryAction(galleryId: string): Promise<
+  | { success: true; scored: GalleryAnalysisItem[]; failed: number }
+  | { success: false; error: string }
+> {
   try {
     await requireAdmin();
 
@@ -282,18 +292,23 @@ export async function analyzeGalleryAction(galleryId: string) {
     });
 
     const results = await Promise.allSettled(
-      assets.map(async (asset) => {
+      assets.map(async (asset): Promise<GalleryAnalysisItem> => {
         if (asset.aiAnalysis) {
           return { id: asset.id, filename: asset.filename, analysis: asset.aiAnalysis, cached: true };
         }
+
         const result = await analyzeMediaAssetAction(asset.id);
-        return { id: asset.id, filename: asset.filename, ...result };
+        if (result.success) {
+          return { id: asset.id, filename: asset.filename, analysis: result.analysis, cached: false };
+        }
+
+        return { id: asset.id, filename: asset.filename, cached: false };
       })
     );
 
-    const scored = results
-      .filter((r) => r.status === "fulfilled")
-      .map((r) => (r as PromiseFulfilledResult<typeof results[0] extends PromiseFulfilledResult<infer T> ? T : never>).value);
+    const scored: GalleryAnalysisItem[] = results
+      .filter((r): r is PromiseFulfilledResult<GalleryAnalysisItem> => r.status === "fulfilled")
+      .map((r) => r.value);
 
     const failed = results.filter((r) => r.status === "rejected").length;
 

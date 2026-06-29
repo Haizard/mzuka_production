@@ -10,7 +10,12 @@ import {
 import { requireAdmin } from "@/lib/auth";
 import { AdminMobileBottomNav } from "@/components/mobile-admin-nav";
 
-const ALL_NAV = [
+const ALL_NAV: Array<{
+  href: string;
+  label: string;
+  icon: React.ComponentType<{ className?: string }>;
+  roles: string[] | null;
+}> = [
   { href: "/admin",                     label: "Dashboard",    icon: LayoutDashboard,       roles: null },
   { href: "/admin/approvals",           label: "Approvals",    icon: UserCheck,              roles: ["ADMIN","COORDINATOR"] },
   { href: "/admin/bookings",            label: "Bookings",     icon: CalendarDays,           roles: ["ADMIN","PRODUCTION_MANAGER","PHOTOGRAPHER","COORDINATOR","ASSISTANT"] },
@@ -34,11 +39,13 @@ const ALL_NAV = [
   { href: "/admin/equipment/returns",   label: "Returns",      icon: RotateCcw,              roles: ["ADMIN","PRODUCTION_MANAGER","COORDINATOR","DRIVER"] },
   { href: "/admin/legal",               label: "Legal",        icon: Scale,                  roles: ["ADMIN"] },
   { href: "/admin/security",            label: "Security",     icon: Shield,                 roles: ["ADMIN"] },
-] as const;
+];
 
-type NavItem = { href: string; label: string; icon: React.ComponentType<{ className?: string }>; roles: readonly string[] | null };
+type NavItem = { href: string; label: string; icon: React.ComponentType<{ className?: string }>; roles: string[] | null };
 
-function filterNav(staffRole: string | null, isFounder: boolean): NavItem[] {
+type StaffRoleLike = string | null;
+
+function filterNav(staffRole: StaffRoleLike, isFounder: boolean): NavItem[] {
   const items: NavItem[] = ALL_NAV.filter((item) => {
     if (isFounder || staffRole === "ADMIN" || staffRole === null) return true;
     if (item.roles === null) return true; // available to everyone

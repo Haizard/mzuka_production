@@ -42,8 +42,17 @@ export default function PayrollPage() {
 
   const load = useCallback(async () => {
     const [data, sumData] = await Promise.all([getPayrollDataAction(), getPayrollSummaryAction()]);
-    if (data.success) { setStaff(data.staff as StaffMember[]); setPayments(data.payrollExpenses as PayrollExpense[]); }
-    if (sumData.success) setSummary(sumData);
+    if (data.success) {
+      setStaff(data.staff as StaffMember[]);
+      setPayments(data.payrollExpenses as PayrollExpense[]);
+    }
+    if (sumData.success) {
+      setSummary({
+        monthTotalCents: sumData.monthTotalCents ?? 0,
+        yearTotalCents: sumData.yearTotalCents ?? 0,
+        allTimeCents: sumData.allTimeCents ?? 0,
+      });
+    }
     setLoading(false);
   }, []);
 
