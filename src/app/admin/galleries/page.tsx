@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
-import { Upload, Loader2, Check, X, Sparkles, Star, Trash2, AlertTriangle, ExternalLink } from "lucide-react";
+import { Upload, Loader2, Check, X, Sparkles, Star, Trash2, AlertTriangle, ExternalLink, Film } from "lucide-react";
 import {
   uploadMediaAssetAction,
   generatePreviewAction,
@@ -10,6 +10,8 @@ import {
   getAdminGalleries,
   releaseMediaAssetsAction,
   cleanupOrphanedAssetsAction,
+  // getTrailerUploadUrlAction,
+  // saveTrailerKeyAction,
 } from "./actions";
 import { prisma } from "@/lib/db";
 
@@ -28,6 +30,7 @@ interface MediaAsset {
   kind: string;
   releaseStatus: string;
   previewKey: string | null;
+  trailerKey: string | null;
   originalKey: string;
   createdAt: Date;
   aiAnalysis?: AiAnalysis | null;
@@ -56,6 +59,7 @@ export default function AdminGalleriesPage() {
   const [analysisLoading, setAnalysisLoading] = useState<string | null>(null);
   const [cleanupLoading, setCleanupLoading]   = useState<string | null>(null);
   const [cleanupMsg, setCleanupMsg]           = useState<string | null>(null);
+  const [trailerUploadingId, setTrailerUploadingId] = useState<string | null>(null);
 
   const loadGalleries = useCallback(async () => {
     const result = await getAdminGalleries();
@@ -167,6 +171,36 @@ export default function AdminGalleriesPage() {
     setTimeout(() => setCleanupMsg(null), 4000);
   };
 
+  const handleTrailerUpload = async (e: React.ChangeEvent<HTMLInputElement>, assetId: string) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+
+    // Trailer upload functionality not yet implemented
+    alert("Trailer upload feature coming soon.");
+    return;
+
+    /*
+    setTrailerUploadingId(assetId);
+    try {
+      const urlRes = await getTrailerUploadUrlAction(assetId, file.name, file.type);
+      if (!urlRes.success || !urlRes.uploadUrl || !urlRes.trailerKey) {
+        alert(urlRes.error ?? "Failed to prepare trailer upload");
+        return;
+      }
+      const s3Res = await fetch(urlRes.uploadUrl, { method: "PUT", body: file, headers: { "Content-Type": file.type } });
+      if (!s3Res.ok) { alert("Trailer upload to storage failed. Try again."); return; }
+      await saveTrailerKeyAction(assetId, urlRes.trailerKey);
+      await loadGalleries();
+    } catch (err) {
+      console.error("Trailer upload error:", err);
+      alert("Trailer upload failed.");
+    } finally {
+      setTrailerUploadingId(null);
+    }
+    */
+  };
+
   return (
     <main className="space-y-6">
       <div>
@@ -244,6 +278,8 @@ export default function AdminGalleriesPage() {
                                 <p className="text-xs text-zinc-500">
                                   {asset.kind === "PHOTO" ? "📷" : "🎥"} {asset.kind}
                                   {hasPreview && <span className="ml-1 text-emerald-500">· preview ready</span>}
+                                  {asset.kind === "VIDEO" && asset.trailerKey && <span className="ml-1 text-violet-400">· trailer ready</span>}
+                                  {asset.kind === "VIDEO" && !asset.trailerKey && !isOrphan && <span className="ml-1 text-amber-500">· no trailer</span>}
                                 </p>
                               </div>
                               <div className="flex items-center gap-3 ml-3 shrink-0">
@@ -256,6 +292,29 @@ export default function AdminGalleriesPage() {
                                     <Star className="inline h-3 w-3 mb-0.5 mr-0.5" />
                                     {asset.aiAnalysis.overallScore}
                                   </span>
+                                )}
+                                {/* Trailer upload for videos */}
+                                {asset.kind === "VIDEO" && !isOrphan && (
+                                  <label className="cursor-pointer" title={asset.trailerKey ? "Replace trailer" : "Upload trailer (≤3 min)"}>
+                                    <input
+                                      key={`trailer-${asset.id}`}
+                                      type="file"
+                                      accept="video/mp4,video/quicktime"
+                                      onChange={(e) => handleTrailerUpload(e, asset.id)}
+                                      disabled={trailerUploadingId === asset.id}
+                                      className="hidden"
+                                    />
+                                    <span className={`flex items-center gap-1 text-xs px-2 py-0.5 rounded-full border transition ${
+                                      trailerUploadingId === asset.id
+                                        ? "border-violet-500/30 text-violet-300 animate-pulse"
+                                        : asset.trailerKey
+                                        ? "border-violet-500/30 text-violet-300 hover:bg-violet-500/10"
+                                        : "border-amber-500/30 text-amber-300 hover:bg-amber-500/10"
+                                    }`}>
+                                      <Film className="h-3 w-3" />
+                                      {trailerUploadingId === asset.id ? "…" : asset.trailerKey ? "Trailer ✓" : "Trailer"}
+                                    </span>
+                                  </label>
                                 )}
                                 {asset.releaseStatus === "RELEASED"
                                   ? <Check className="h-4 w-4 text-emerald-400" />

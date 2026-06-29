@@ -9,7 +9,6 @@ import {
   downloadS3Object,
   uploadPreviewToS3,
   s3ObjectExists,
-  deleteS3Object,
 } from "@/lib/s3";
 import { generateWatermarkedPreview } from "@/lib/watermark";
 import { scorePhoto, RELEASE_THRESHOLD } from "@/lib/ai-scoring";
@@ -474,6 +473,19 @@ export async function getGalleryAccessUrls(
           previewUrl = pv.previewUrl ?? null;
         }
 
+        // For unpaid VIDEO assets with a trailer: generate trailer URL instead of nothing
+        let trailerUrl: string | null = null;
+        if (asset.kind === "VIDEO" && asset.trailerKey && !isPaid) {
+          const tv = await generateS3PreviewUrl(asset.trailerKey, 7200);
+          trailerUrl = tv.previewUrl ?? null;
+        }
+        if (isPaid && asset.kind === "VIDEO") {
+          // Paid: full video URL
+          const dl = await generateS3DownloadUrl(asset.originalKey, 3600);
+          downloadUrl = dl.downloadUrl ?? null;
+          previewUrl  = downloadUrl;
+        }
+
         // Record access with IP and user-agent
         await prisma.accessLog.create({
           data: {
@@ -493,7 +505,9 @@ export async function getGalleryAccessUrls(
           height: asset.height,
           previewUrl,
           downloadUrl,
+          trailerUrl: trailerUrl ?? null,
           isPaid,
+          hasTrailer: !!asset.trailerKey,
         };
       })
     );
