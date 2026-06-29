@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import Script from "next/script";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -21,14 +22,14 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-  title: "Muzuka Gilbert",
+  title: "MG MUZUKA GILBERT",
   description:
     "Luxury photography, videography, booking, and protected-gallery platform.",
-  applicationName: "Muzuka Gilbert",
+  applicationName: "MG MUZUKA GILBERT",
   manifest: "/manifest.webmanifest",
   appleWebApp: {
     capable: true,
-    title: "Muzuka Gilbert",
+    title: "MG MUZUKA GILBERT",
     statusBarStyle: "black-translucent",
     startupImage: [
       { url: "/brand/splash-2048x2732.png", media: "screen and (device-width: 1024px) and (device-height: 1366px)" },
@@ -40,11 +41,11 @@ export const metadata: Metadata = {
   formatDetection: { telephone: false },
   icons: {
     icon: [
-      { url: "/brand/icon-192.png", sizes: "192x192", type: "image/png" },
-      { url: "/brand/icon-512.png", sizes: "512x512", type: "image/png" },
+      { url: "/brand/mg-logo-192.png", sizes: "192x192", type: "image/png" },
+      { url: "/brand/mg-logo-512.png", sizes: "512x512", type: "image/png" },
     ],
     apple: [
-      { url: "/brand/apple-touch-icon.png", sizes: "180x180", type: "image/png" },
+      { url: "/brand/mg-logo-apple-touch-icon.png", sizes: "180x180", type: "image/png" },
     ],
   },
 };
@@ -62,11 +63,28 @@ export default function RootLayout({
       <head>
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-title" content="MG MUZUKA GILBERT" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
         <meta name="msapplication-TileColor" content="#050505" />
         <meta name="msapplication-tap-highlight" content="no" />
+        <meta name="theme-color" content="#d4af37" />
+        <link rel="manifest" href="/manifest.webmanifest" />
+        <link rel="icon" href="/brand/mg-logo-192.png" sizes="192x192" />
+        <link rel="icon" href="/brand/mg-logo-512.png" sizes="512x512" />
+        <link rel="apple-touch-icon" href="/brand/mg-logo-apple-touch-icon.png" />
       </head>
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="min-h-full flex flex-col">
+        {children}
+        <Script id="register-sw" strategy="afterInteractive">
+          {`
+            if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
+              window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js').catch(() => {});
+              });
+            }
+          `}
+        </Script>
+      </body>
     </html>
   );
 }
