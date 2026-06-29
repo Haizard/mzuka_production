@@ -1,6 +1,6 @@
 "use server";
 
-import { requireAdmin } from "@/lib/auth";
+import { requireAdminAccess } from "@/lib/admin-permissions";
 import { prisma } from "@/lib/db";
 import {
   TrendingUp, Users, CalendarDays, DollarSign,
@@ -8,7 +8,7 @@ import {
 } from "lucide-react";
 
 async function getAnalyticsData() {
-  await requireAdmin();
+  await requireAdminAccess("/admin/analytics");
 
   const now = new Date();
   const months = Array.from({ length: 6 }, (_, i) => {

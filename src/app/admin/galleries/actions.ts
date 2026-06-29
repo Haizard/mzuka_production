@@ -1,6 +1,7 @@
 "use server";
 
-import { requireAdmin, requireApprovedUser } from "@/lib/auth";
+import { requireApprovedUser } from "@/lib/auth";
+import { requireAdminAccess } from "@/lib/admin-permissions";
 import { prisma } from "@/lib/db";
 import {
   generateS3UploadUrl,
@@ -14,11 +15,15 @@ import { generateWatermarkedPreview } from "@/lib/watermark";
 import { scorePhoto, RELEASE_THRESHOLD } from "@/lib/ai-scoring";
 import { sendGalleryReadyMessage } from "@/lib/messages";
 
+function requireGalleriesAccess() {
+  return requireAdminAccess("/admin/galleries");
+}
+
 // ── Gallery CRUD ──────────────────────────────────────────────────────────────
 
 export async function createGalleryAction(bookingId: string, title: string) {
   try {
-    await requireAdmin();
+    await requireGalleriesAccess();
 
     const booking = await prisma.booking.findUnique({
       where: { id: bookingId },
@@ -81,7 +86,7 @@ export async function uploadMediaAssetAction(
   sizeBytes?: number
 ) {
   try {
-    await requireAdmin();
+    await requireGalleriesAccess();
 
     const gallery = await prisma.gallery.findUnique({
       where: { id: galleryId },
@@ -144,7 +149,7 @@ export async function uploadMediaAssetAction(
  */
 export async function generatePreviewAction(mediaAssetId: string) {
   try {
-    await requireAdmin();
+    await requireGalleriesAccess();
 
     const asset = await prisma.mediaAsset.findUnique({
       where: { id: mediaAssetId },
@@ -204,7 +209,7 @@ export async function generatePreviewAction(mediaAssetId: string) {
  */
 export async function analyzeMediaAssetAction(mediaAssetId: string, forceReanalyze = false) {
   try {
-    await requireAdmin();
+    await requireGalleriesAccess();
 
     const asset = await prisma.mediaAsset.findUnique({
       where: { id: mediaAssetId },
@@ -283,7 +288,7 @@ export async function analyzeGalleryAction(galleryId: string): Promise<
   | { success: false; error: string }
 > {
   try {
-    await requireAdmin();
+    await requireGalleriesAccess();
 
     const assets = await prisma.mediaAsset.findMany({
       where: { galleryId, kind: "PHOTO" },
@@ -322,7 +327,7 @@ export async function analyzeGalleryAction(galleryId: string): Promise<
 
 export async function releaseMediaAssetsAction(galleryId: string) {
   try {
-    await requireAdmin();
+    await requireGalleriesAccess();
 
     const gallery = await prisma.gallery.findUnique({
       where: { id: galleryId },
@@ -381,7 +386,7 @@ export async function releaseMediaAssetsAction(galleryId: string) {
  */
 export async function cleanupOrphanedAssetsAction(galleryId: string) {
   try {
-    await requireAdmin();
+    await requireGalleriesAccess();
 
     const assets = await prisma.mediaAsset.findMany({
       where: { galleryId },
@@ -532,7 +537,7 @@ export async function getGalleryAccessUrls(
 
 export async function getAdminGalleries() {
   try {
-    await requireAdmin();
+    await requireGalleriesAccess();
 
     const galleries = await prisma.gallery.findMany({
       include: {

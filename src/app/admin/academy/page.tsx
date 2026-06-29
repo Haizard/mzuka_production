@@ -1,12 +1,12 @@
 "use server";
 
-import { requireAdmin } from "@/lib/auth";
+import { requireAdminAccess } from "@/lib/admin-permissions";
 import { prisma } from "@/lib/db";
 import Link from "next/link";
 import { BookOpen, Plus, Eye } from "lucide-react";
 
 async function getModules() {
-  await requireAdmin();
+  await requireAdminAccess("/admin/academy");
   return prisma.academyModule.findMany({ orderBy: [{ order: "asc" }, { createdAt: "desc" }] });
 }
 

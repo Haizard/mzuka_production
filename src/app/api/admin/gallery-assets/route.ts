@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireAdmin } from "@/lib/auth";
+import { requireAdminAccess } from "@/lib/admin-permissions";
 import { prisma } from "@/lib/db";
 
 export async function GET(req: NextRequest) {
   try {
-    await requireAdmin();
+    await requireAdminAccess("/admin/galleries");
     const galleryId = req.nextUrl.searchParams.get("galleryId");
     if (!galleryId) return NextResponse.json({ error: "galleryId required" }, { status: 400 });
 

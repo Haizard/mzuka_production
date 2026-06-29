@@ -1,6 +1,6 @@
 "use server";
 
-import { requireAdmin } from "@/lib/auth";
+import { requireAdminAccess } from "@/lib/admin-permissions";
 import { prisma } from "@/lib/db";
 import OpenAI from "openai";
 import { nanoid } from "nanoid";
@@ -10,6 +10,10 @@ function getOpenAI() {
 }
 
 function cuid() { return nanoid(25); }
+
+function requireAiAccess() {
+  return requireAdminAccess("/admin/ai");
+}
 
 // ── System prompt ─────────────────────────────────────────────────────────────
 
@@ -32,7 +36,7 @@ Always sign off creative content with [MG] Muzuka Gilbert branding when appropri
 
 export async function createChatAction(firstMessage: string) {
   try {
-    const admin = await requireAdmin();
+    const admin = await requireAiAccess();
     const openai = getOpenAI();
 
     // Auto-generate a short title from the first message
@@ -82,8 +86,14 @@ export async function createChatAction(firstMessage: string) {
 
 export async function sendMessageAction(chatId: string, content: string) {
   try {
-    await requireAdmin();
+    const admin = await requireAiAccess();
     const openai = getOpenAI();
+
+    const chat = await prisma.aiChat.findFirst({
+      where: { id: chatId, userId: admin.id },
+      select: { id: true },
+    });
+    if (!chat) return { success: false, error: "Chat not found" };
 
     // Save user message
     await prisma.aiMessage.create({
@@ -119,7 +129,7 @@ export async function sendMessageAction(chatId: string, content: string) {
 
 export async function getChatsAction() {
   try {
-    const admin = await requireAdmin();
+    const admin = await requireAiAccess();
     const chats = await prisma.aiChat.findMany({
       where: { userId: admin.id },
       orderBy: { updatedAt: "desc" },
@@ -134,7 +144,12 @@ export async function getChatsAction() {
 
 export async function getChatMessagesAction(chatId: string) {
   try {
-    await requireAdmin();
+    const admin = await requireAiAccess();
+    const chat = await prisma.aiChat.findFirst({
+      where: { id: chatId, userId: admin.id },
+      select: { id: true },
+    });
+    if (!chat) return { success: false, error: "Chat not found", messages: [] };
     const messages = await prisma.aiMessage.findMany({
       where: { chatId, role: { not: "system" } },
       orderBy: { createdAt: "asc" },
@@ -148,8 +163,8 @@ export async function getChatMessagesAction(chatId: string) {
 
 export async function deleteChatAction(chatId: string) {
   try {
-    await requireAdmin();
-    await prisma.aiChat.delete({ where: { id: chatId } });
+    const admin = await requireAiAccess();
+    await prisma.aiChat.deleteMany({ where: { id: chatId, userId: admin.id } });
     return { success: true };
   } catch (error) {
     console.error("Failed to delete chat:", error);
@@ -163,7 +178,7 @@ export async function generateCaptionAction(data: {
   subject: string; tone: string; platform: string; hashtags: boolean;
 }) {
   try {
-    await requireAdmin();
+    await requireAiAccess();
     const openai = getOpenAI();
 
     const prompt = `Write a ${data.tone} social media caption for ${data.platform} about: ${data.subject}.
@@ -190,7 +205,7 @@ export async function generateScriptAction(data: {
   type: string; duration: string; topic: string; style: string;
 }) {
   try {
-    await requireAdmin();
+    await requireAiAccess();
     const openai = getOpenAI();
 
     const prompt = `Write a ${data.duration} ${data.type} script about: ${data.topic}.
@@ -217,7 +232,7 @@ export async function translateContentAction(data: {
   content: string; targetLanguage: string;
 }) {
   try {
-    await requireAdmin();
+    await requireAiAccess();
     const openai = getOpenAI();
 
     const res = await openai.chat.completions.create({
@@ -237,7 +252,7 @@ export async function translateContentAction(data: {
 
 export async function summarizeContentAction(content: string) {
   try {
-    await requireAdmin();
+    await requireAiAccess();
     const openai = getOpenAI();
 
     const res = await openai.chat.completions.create({

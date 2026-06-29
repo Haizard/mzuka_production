@@ -1,15 +1,14 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/db";
-import { canManageEmployees } from "@/lib/admin-permissions";
+import { canManageEmployees, requireAdminAccess } from "@/lib/admin-permissions";
 import { Users } from "lucide-react";
 import { EmployeeManager } from "./employee-manager";
 import { STAFF_ROLES } from "./staff-roles";
 
 async function getData() {
-  const admin = await requireAdmin();
+  const admin = await requireAdminAccess("/admin/employees");
   if (!canManageEmployees(admin)) redirect("/admin");
 
   const staff = await prisma.user.findMany({

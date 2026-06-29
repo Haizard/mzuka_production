@@ -14,7 +14,7 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { requireAdmin } from "@/lib/auth";
+import { requireAdminAccess } from "@/lib/admin-permissions";
 import { prisma } from "@/lib/db";
 import { generateS3UploadUrl, validateMediaFile } from "@/lib/s3";
 import { nanoid } from "nanoid";
@@ -35,7 +35,7 @@ export async function POST(req: NextRequest) {
     // ── Auth: admin only ──────────────────────────────────────────────────────
     let admin;
     try {
-      admin = await requireAdmin();
+      admin = await requireAdminAccess("/admin/galleries");
     } catch {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }

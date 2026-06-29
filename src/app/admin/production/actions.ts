@@ -1,8 +1,24 @@
 "use server";
 
 import type { ProjectStage, TaskStatus } from "@prisma/client";
-import { requireAdmin } from "@/lib/auth";
+import { requireAdminAccess, requireAnyAdminAccess } from "@/lib/admin-permissions";
 import { prisma } from "@/lib/db";
+
+function requireProductionAccess() {
+  return requireAdminAccess("/admin/production");
+}
+
+function requireCalendarAccess() {
+  return requireAdminAccess("/admin/production/calendar");
+}
+
+function requireDeliveryAccess() {
+  return requireAdminAccess("/admin/production/delivery");
+}
+
+function requireProductionStatsAccess() {
+  return requireAnyAdminAccess(["/admin/production", "/admin/reports"]);
+}
 
 // ── Project ───────────────────────────────────────────────────────────────────
 
@@ -12,7 +28,7 @@ export async function createProjectAction(
   data: { shootDate?: string; editDueDate?: string; notes?: string }
 ) {
   try {
-    await requireAdmin();
+    await requireProductionAccess();
 
     const booking = await prisma.booking.findUnique({
       where: { id: bookingId },
@@ -42,7 +58,7 @@ export async function createProjectAction(
 /** Get all projects — production dashboard */
 export async function getAllProjects() {
   try {
-    await requireAdmin();
+    await requireProductionAccess();
 
     const projects = await prisma.project.findMany({
       include: {
@@ -77,7 +93,7 @@ export async function getAllProjects() {
 /** Get a single project with full detail */
 export async function getProjectById(projectId: string) {
   try {
-    await requireAdmin();
+    await requireProductionAccess();
 
     const project = await prisma.project.findUnique({
       where: { id: projectId },
@@ -120,7 +136,7 @@ export async function getProjectById(projectId: string) {
 /** Advance project to next pipeline stage */
 export async function updateProjectStageAction(projectId: string, stage: ProjectStage) {
   try {
-    const admin = await requireAdmin();
+    const admin = await requireProductionAccess();
 
     const updated = await prisma.project.update({
       where: { id: projectId },
@@ -153,7 +169,7 @@ export async function updateProjectAction(
   data: { shootDate?: string | null; editDueDate?: string | null; notes?: string }
 ) {
   try {
-    await requireAdmin();
+    await requireProductionAccess();
 
     const updated = await prisma.project.update({
       where: { id: projectId },
@@ -175,7 +191,7 @@ export async function updateProjectAction(
 
 export async function assignStaffAction(projectId: string, staffId: string, role: string) {
   try {
-    await requireAdmin();
+    await requireProductionAccess();
 
     // Prevent duplicates
     const existing = await prisma.staffAssignment.findFirst({
@@ -197,7 +213,7 @@ export async function assignStaffAction(projectId: string, staffId: string, role
 
 export async function removeStaffAssignmentAction(assignmentId: string) {
   try {
-    await requireAdmin();
+    await requireProductionAccess();
     await prisma.staffAssignment.delete({ where: { id: assignmentId } });
     return { success: true };
   } catch (error) {
@@ -208,7 +224,7 @@ export async function removeStaffAssignmentAction(assignmentId: string) {
 
 export async function getStaffMembers() {
   try {
-    await requireAdmin();
+    await requireProductionAccess();
     const staff = await prisma.user.findMany({
       where: { role: { in: ["FOUNDER", "ADMIN", "STAFF"] }, approvalStatus: "APPROVED" },
       select: { id: true, name: true, email: true, role: true },
@@ -228,7 +244,7 @@ export async function createTaskAction(
   data: { title: string; description?: string; assigneeId?: string; dueAt?: string }
 ) {
   try {
-    await requireAdmin();
+    await requireProductionAccess();
 
     const task = await prisma.projectTask.create({
       data: {
@@ -251,7 +267,7 @@ export async function createTaskAction(
 
 export async function updateTaskStatusAction(taskId: string, status: TaskStatus) {
   try {
-    await requireAdmin();
+    await requireProductionAccess();
 
     const task = await prisma.projectTask.update({
       where: { id: taskId },
@@ -270,7 +286,7 @@ export async function updateTaskStatusAction(taskId: string, status: TaskStatus)
 
 export async function deleteTaskAction(taskId: string) {
   try {
-    await requireAdmin();
+    await requireProductionAccess();
     await prisma.projectTask.delete({ where: { id: taskId } });
     return { success: true };
   } catch (error) {
@@ -283,7 +299,7 @@ export async function deleteTaskAction(taskId: string) {
 
 export async function addNoteAction(projectId: string, body: string) {
   try {
-    const admin = await requireAdmin();
+    const admin = await requireProductionAccess();
 
     const note = await prisma.projectNote.create({
       data: { projectId, authorId: admin.id, body },
@@ -299,7 +315,7 @@ export async function addNoteAction(projectId: string, body: string) {
 
 export async function deleteNoteAction(noteId: string) {
   try {
-    await requireAdmin();
+    await requireProductionAccess();
     await prisma.projectNote.delete({ where: { id: noteId } });
     return { success: true };
   } catch (error) {
@@ -315,7 +331,7 @@ export async function logCommunicationAction(
   data: { userId: string; channel: string; subject: string; body: string; sentAt?: Date }
 ) {
   try {
-    await requireAdmin();
+    await requireProductionAccess();
 
     const comm = await prisma.clientCommunication.create({
       data: {
@@ -340,7 +356,7 @@ export async function logCommunicationAction(
 
 export async function getProductionStats() {
   try {
-    await requireAdmin();
+    await requireProductionStatsAccess();
 
     const [total, shooting, editing, review, delivered] = await Promise.all([
       prisma.project.count(),
@@ -373,7 +389,7 @@ export async function getProductionStats() {
  */
 export async function getCalendarEvents(year: number, month: number) {
   try {
-    await requireAdmin();
+    await requireCalendarAccess();
 
     const start = new Date(year, month - 1, 1);
     const end   = new Date(year, month, 0, 23, 59, 59); // last day of month
@@ -416,7 +432,7 @@ export async function getCalendarEvents(year: number, month: number) {
 /** Mark a project as delivered and timestamp it */
 export async function markDeliveredAction(projectId: string) {
   try {
-    const admin = await requireAdmin();
+    const admin = await requireDeliveryAccess();
 
     const project = await prisma.project.update({
       where: { id: projectId },
@@ -444,7 +460,7 @@ export async function markDeliveredAction(projectId: string) {
 /** Get delivery summary — all projects with delivery info */
 export async function getDeliveryStatus() {
   try {
-    await requireAdmin();
+    await requireDeliveryAccess();
 
     const projects = await prisma.project.findMany({
       include: {

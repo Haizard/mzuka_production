@@ -132,8 +132,12 @@ export async function GET(req: NextRequest) {
     await createUserSession(user.id);
 
     // Redirect based on role
-    if (["FOUNDER", "ADMIN", "STAFF"].includes(user.role)) {
+    if (["FOUNDER", "ADMIN"].includes(user.role)) {
       return NextResponse.redirect(`${base}/admin`);
+    }
+
+    if (user.role === "STAFF") {
+      return NextResponse.redirect(`${base}/staff`);
     }
 
     return NextResponse.redirect(`${base}/client`);

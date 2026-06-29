@@ -1,11 +1,11 @@
 "use server";
 
-import { requireAdmin } from "@/lib/auth";
+import { requireAdminAccess } from "@/lib/admin-permissions";
 import { prisma } from "@/lib/db";
 
 export async function getAdminBookingDetail(id: string) {
   try {
-    await requireAdmin();
+    await requireAdminAccess("/admin/bookings");
 
     const booking = await prisma.booking.findUnique({
       where: { id },

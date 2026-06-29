@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { ArrowLeft, GalleryHorizontalEnd, User, CreditCard } from "lucide-react";
-import { requireAdmin } from "@/lib/auth";
+import { requireAdminAccess } from "@/lib/admin-permissions";
 import { prisma } from "@/lib/db";
 import { notFound } from "next/navigation";
 import { GalleryDetailWrapper } from "./GalleryDetailWrapper";
@@ -12,7 +12,7 @@ interface Props {
 }
 
 export default async function AdminGalleryDetailPage({ params }: Props) {
-  await requireAdmin();
+  await requireAdminAccess("/admin/galleries");
   const { galleryId } = await params;
 
   const gallery = await prisma.gallery.findUnique({

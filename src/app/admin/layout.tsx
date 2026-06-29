@@ -8,40 +8,41 @@ import {
   BookOpen, Users, Scale, Crown, Wrench, RotateCcw, Wallet,
 } from "lucide-react";
 import { requireAdmin } from "@/lib/auth";
+import { ADMIN_NAV_ITEMS } from "@/lib/admin-permissions";
 import { AdminMobileBottomNav } from "@/components/mobile-admin-nav";
 
 const ALL_NAV: Array<{
   href: string;
   label: string;
   icon: React.ComponentType<{ className?: string }>;
-  roles: string[] | null;
+  roles: readonly string[] | null;
 }> = [
-  { href: "/admin",                     label: "Dashboard",    icon: LayoutDashboard,       roles: null },
-  { href: "/admin/approvals",           label: "Approvals",    icon: UserCheck,              roles: ["ADMIN","COORDINATOR"] },
-  { href: "/admin/bookings",            label: "Bookings",     icon: CalendarDays,           roles: ["ADMIN","PRODUCTION_MANAGER","PHOTOGRAPHER","COORDINATOR","ASSISTANT"] },
-  { href: "/admin/packages",            label: "Packages",     icon: Package,                roles: ["ADMIN"] },
-  { href: "/admin/galleries",           label: "Galleries",    icon: GalleryHorizontalEnd,   roles: ["ADMIN","PRODUCTION_MANAGER","PHOTOGRAPHER","VIDEO_EDITOR","EDITOR"] },
-  { href: "/admin/production",          label: "Production",   icon: Clapperboard,           roles: ["ADMIN","PRODUCTION_MANAGER","PHOTOGRAPHER","VIDEO_EDITOR","EDITOR","COORDINATOR"] },
-  { href: "/admin/production/calendar", label: "Calendar",     icon: CalendarRange,          roles: ["ADMIN","PRODUCTION_MANAGER","PHOTOGRAPHER","COORDINATOR"] },
-  { href: "/admin/production/delivery", label: "Delivery",     icon: Truck,                  roles: ["ADMIN","PRODUCTION_MANAGER","COORDINATOR","DRIVER"] },
-  { href: "/admin/finance",             label: "Finance",      icon: DollarSign,             roles: ["ADMIN","HUMAN_RESOURCE"] },
-  { href: "/admin/finance/invoices",    label: "Invoices",     icon: Receipt,                roles: ["ADMIN","HUMAN_RESOURCE"] },
-  { href: "/admin/finance/expenses",    label: "Expenses",     icon: TrendingDown,           roles: ["ADMIN","HUMAN_RESOURCE"] },
-  { href: "/admin/finance/contracts",   label: "Contracts",    icon: FileText,               roles: ["ADMIN"] },
-  { href: "/admin/payroll",             label: "Payroll",      icon: Wallet,                 roles: ["ADMIN","HUMAN_RESOURCE"] },
-  { href: "/admin/ai",                  label: "AI Assistant", icon: Bot,                    roles: ["ADMIN","PRODUCTION_MANAGER","VIDEO_EDITOR"] },
-  { href: "/admin/analytics",           label: "Analytics",    icon: BarChart2,              roles: ["ADMIN","HUMAN_RESOURCE"] },
-  { href: "/admin/media-library",       label: "Media Library",icon: ImageIcon,              roles: ["ADMIN","PHOTOGRAPHER","VIDEO_EDITOR","EDITOR"] },
-  { href: "/admin/reports",             label: "Reports",      icon: ClipboardList,          roles: ["ADMIN","HUMAN_RESOURCE"] },
-  { href: "/admin/academy",             label: "Academy",      icon: BookOpen,               roles: null },
-  { href: "/admin/employees",           label: "Employees",    icon: Users,                  roles: ["ADMIN","HUMAN_RESOURCE"] },
-  { href: "/admin/equipment",           label: "Equipment",    icon: Wrench,                 roles: ["ADMIN","PRODUCTION_MANAGER","COORDINATOR","DRIVER"] },
-  { href: "/admin/equipment/returns",   label: "Returns",      icon: RotateCcw,              roles: ["ADMIN","PRODUCTION_MANAGER","COORDINATOR","DRIVER"] },
-  { href: "/admin/legal",               label: "Legal",        icon: Scale,                  roles: ["ADMIN"] },
-  { href: "/admin/security",            label: "Security",     icon: Shield,                 roles: ["ADMIN"] },
+  { ...ADMIN_NAV_ITEMS[0],  icon: LayoutDashboard },
+  { ...ADMIN_NAV_ITEMS[1],  icon: UserCheck },
+  { ...ADMIN_NAV_ITEMS[2],  icon: CalendarDays },
+  { ...ADMIN_NAV_ITEMS[3],  icon: Package },
+  { ...ADMIN_NAV_ITEMS[4],  icon: GalleryHorizontalEnd },
+  { ...ADMIN_NAV_ITEMS[5],  icon: Clapperboard },
+  { ...ADMIN_NAV_ITEMS[6],  icon: CalendarRange },
+  { ...ADMIN_NAV_ITEMS[7],  icon: Truck },
+  { ...ADMIN_NAV_ITEMS[8],  icon: DollarSign },
+  { ...ADMIN_NAV_ITEMS[9],  icon: Receipt },
+  { ...ADMIN_NAV_ITEMS[10], icon: TrendingDown },
+  { ...ADMIN_NAV_ITEMS[11], icon: FileText },
+  { ...ADMIN_NAV_ITEMS[12], icon: Wallet },
+  { ...ADMIN_NAV_ITEMS[13], icon: Bot },
+  { ...ADMIN_NAV_ITEMS[14], icon: BarChart2 },
+  { ...ADMIN_NAV_ITEMS[15], icon: ImageIcon },
+  { ...ADMIN_NAV_ITEMS[16], icon: ClipboardList },
+  { ...ADMIN_NAV_ITEMS[17], icon: BookOpen },
+  { ...ADMIN_NAV_ITEMS[18], icon: Users },
+  { ...ADMIN_NAV_ITEMS[19], icon: Wrench },
+  { ...ADMIN_NAV_ITEMS[20], icon: RotateCcw },
+  { ...ADMIN_NAV_ITEMS[21], icon: Scale },
+  { ...ADMIN_NAV_ITEMS[22], icon: Shield },
 ];
 
-type NavItem = { href: string; label: string; icon: React.ComponentType<{ className?: string }>; roles: string[] | null };
+type NavItem = { href: string; label: string; icon: React.ComponentType<{ className?: string }>; roles: readonly string[] | null };
 
 type StaffRoleLike = string | null;
 

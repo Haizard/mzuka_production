@@ -11,7 +11,7 @@ export default async function LoginPage({
   const user = await getCurrentUser();
 
   if (user?.approvalStatus === "APPROVED") {
-    redirect(["FOUNDER", "ADMIN", "STAFF"].includes(user.role) ? "/admin" : "/client");
+    redirect(["FOUNDER", "ADMIN"].includes(user.role) ? "/admin" : user.role === "STAFF" ? "/staff" : "/client");
   }
 
   if (user) {

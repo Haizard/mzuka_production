@@ -1,7 +1,8 @@
 "use server";
 
 import type { EquipmentStatus, ConditionStatus } from "@prisma/client";
-import { getCurrentUser, requireAdmin } from "@/lib/auth";
+import { getCurrentUser } from "@/lib/auth";
+import { canManageEmployees, requireAdminAccess } from "@/lib/admin-permissions";
 import { prisma } from "@/lib/db";
 import { nanoid } from "nanoid";
 
@@ -18,6 +19,14 @@ async function requireProductionManager() {
   return user;
 }
 
+function requireEquipmentAccess() {
+  return requireAdminAccess("/admin/equipment");
+}
+
+function requireEmployeesAccess() {
+  return requireAdminAccess("/admin/employees");
+}
+
 async function requireStaff() {
   const user = await getCurrentUser();
   if (!user) throw new Error("Unauthorized");
@@ -29,7 +38,8 @@ async function requireStaff() {
 
 export async function toggleProductionManagerAction(staffId: string, isProductionManager: boolean) {
   try {
-    await requireAdmin();
+    const admin = await requireEmployeesAccess();
+    if (!canManageEmployees(admin)) return { success: false, error: "Forbidden" };
     const staff = await prisma.user.findUnique({ where: { id: staffId } });
     if (!staff || staff.role !== "STAFF") return { success: false, error: "User must be STAFF role" };
     await prisma.user.update({ where: { id: staffId }, data: { isProductionManager } });
@@ -97,7 +107,7 @@ export async function deleteCategoryAction(categoryId: string) {
 
 export async function getCategoriesAction() {
   try {
-    await requireStaff();
+    await requireEquipmentAccess();
     const categories = await prisma.equipmentCategory.findMany({
       orderBy: { name: "asc" },
       include: { _count: { select: { items: true } } },
@@ -210,7 +220,7 @@ export async function deleteEquipmentItemAction(itemId: string) {
 
 export async function getEquipmentItemsAction(filters: { categoryId?: string; status?: EquipmentStatus } = {}) {
   try {
-    await requireStaff();
+    await requireEquipmentAccess();
     const where: Record<string, unknown> = {};
     if (filters.categoryId) where.categoryId = filters.categoryId;
     if (filters.status)     where.status     = filters.status;
@@ -275,7 +285,7 @@ export async function assignEquipmentAction(data: { taskId: string; itemId: stri
 
 export async function getTaskEquipmentAction(taskId: string) {
   try {
-    await requireStaff();
+    await requireProductionManager();
     const assignments = await prisma.equipmentAssignment.findMany({
       where: { taskId, returnedAt: null },
       include: {

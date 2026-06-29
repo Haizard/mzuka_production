@@ -1,11 +1,15 @@
 "use server";
 
-import { requireAdmin } from "@/lib/auth";
+import { requireAdminAccess } from "@/lib/admin-permissions";
 import { prisma } from "@/lib/db";
+
+function requirePackagesAccess() {
+  return requireAdminAccess("/admin/packages");
+}
 
 export async function getServicePackages() {
   try {
-    await requireAdmin();
+    await requirePackagesAccess();
 
     const packages = await prisma.servicePackage.findMany({
       orderBy: { priceCents: "asc" },
@@ -32,7 +36,7 @@ export async function createServicePackageAction(input: {
   durationMin?: number;
 }) {
   try {
-    await requireAdmin();
+    await requirePackagesAccess();
 
     const pkg = await prisma.servicePackage.create({
       data: {
@@ -69,7 +73,7 @@ export async function updateServicePackageAction(
   }
 ) {
   try {
-    await requireAdmin();
+    await requirePackagesAccess();
 
     const pkg = await prisma.servicePackage.update({
       where: { id: packageId },
@@ -91,7 +95,7 @@ export async function updateServicePackageAction(
 
 export async function deleteServicePackageAction(packageId: string) {
   try {
-    await requireAdmin();
+    await requirePackagesAccess();
 
     await prisma.servicePackage.delete({
       where: { id: packageId },

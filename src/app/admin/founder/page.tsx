@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { requireAdmin } from "@/lib/auth";
+import { requireAdminAccess } from "@/lib/admin-permissions";
 import { prisma } from "@/lib/db";
 import {
   Crown, Shield, Users, DollarSign, Camera,
@@ -11,7 +11,7 @@ import {
 } from "lucide-react";
 
 async function getFounderData() {
-  const admin = await requireAdmin();
+  const admin = await requireAdminAccess("/admin/founder");
   if (admin.role !== "FOUNDER") redirect("/admin");
 
   const [

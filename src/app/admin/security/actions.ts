@@ -1,6 +1,6 @@
 "use server";
 
-import { requireAdmin } from "@/lib/auth";
+import { requireAdminAccess } from "@/lib/admin-permissions";
 import { prisma } from "@/lib/db";
 
 // ── Audit log dashboard ───────────────────────────────────────────────────────
@@ -15,7 +15,7 @@ export interface AuditLogFilters {
 
 export async function getAuditLogs(filters: AuditLogFilters = {}) {
   try {
-    await requireAdmin();
+    await requireAdminAccess("/admin/security");
 
     const where: Record<string, unknown> = {};
     if (filters.action) where.action = filters.action;
@@ -44,7 +44,7 @@ export async function getAuditLogs(filters: AuditLogFilters = {}) {
 
 export async function getAccessLogs(galleryId?: string) {
   try {
-    await requireAdmin();
+    await requireAdminAccess("/admin/security");
 
     const where = galleryId ? { galleryId } : {};
 
@@ -69,7 +69,7 @@ export async function getAccessLogs(galleryId?: string) {
 
 export async function getSecurityStats() {
   try {
-    await requireAdmin();
+    await requireAdminAccess("/admin/security");
 
     const [
       totalAccess,
@@ -112,7 +112,7 @@ export async function updateGalleryPermissionsAction(
   }
 ) {
   try {
-    await requireAdmin();
+    await requireAdminAccess("/admin/security");
 
     const gallery = await prisma.gallery.findUnique({ where: { id: galleryId } });
     if (!gallery) return { success: false, error: "Gallery not found" };
@@ -157,7 +157,7 @@ export async function updateGalleryPermissionsAction(
 
 export async function revokeGalleryAccessAction(galleryId: string) {
   try {
-    await requireAdmin();
+    await requireAdminAccess("/admin/security");
 
     const updated = await prisma.gallery.update({
       where: { id: galleryId },

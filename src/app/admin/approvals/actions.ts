@@ -1,12 +1,12 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { requireAdmin } from "@/lib/auth";
+import { requireAdminAccess } from "@/lib/admin-permissions";
 import { prisma } from "@/lib/db";
 import { sendApprovalMessage, sendRejectionMessage } from "@/lib/messages";
 
 export async function approveClientAction(formData: FormData) {
-  const admin = await requireAdmin();
+  const admin = await requireAdminAccess("/admin/approvals");
   const clientId = String(formData.get("clientId") ?? "");
 
   if (!clientId) return;
@@ -51,7 +51,7 @@ export async function approveClientAction(formData: FormData) {
 }
 
 export async function rejectClientAction(formData: FormData) {
-  const admin = await requireAdmin();
+  const admin = await requireAdminAccess("/admin/approvals");
   const clientId = String(formData.get("clientId") ?? "");
 
   if (!clientId) return;

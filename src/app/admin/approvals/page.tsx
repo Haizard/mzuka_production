@@ -4,11 +4,11 @@ import {
   approveClientAction,
   rejectClientAction,
 } from "@/app/admin/approvals/actions";
-import { requireAdmin } from "@/lib/auth";
+import { requireAdminAccess } from "@/lib/admin-permissions";
 import { prisma } from "@/lib/db";
 
 export default async function ApprovalsPage() {
-  await requireAdmin();
+  await requireAdminAccess("/admin/approvals");
 
   const pendingClients = await prisma.user.findMany({
     where: { role: "CLIENT", approvalStatus: "PENDING" },

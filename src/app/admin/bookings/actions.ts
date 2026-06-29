@@ -1,9 +1,13 @@
 "use server";
 
 import type { BookingStatus, PaymentStatus, BookingStatusV2 } from "@prisma/client";
-import { requireAdmin } from "@/lib/auth";
+import { requireAdminAccess } from "@/lib/admin-permissions";
 import { prisma } from "@/lib/db";
 import { sendBookingConfirmedMessage } from "@/lib/messages";
+
+function requireBookingsAccess() {
+  return requireAdminAccess("/admin/bookings");
+}
 
 export interface GetAllBookingsInput {
   status?: BookingStatus;
@@ -14,7 +18,7 @@ export interface GetAllBookingsInput {
 
 export async function getAllBookings(input: GetAllBookingsInput = {}) {
   try {
-    await requireAdmin();
+    await requireBookingsAccess();
 
     const where: {
       status?: BookingStatus;
@@ -86,7 +90,7 @@ const BOOKING_STATUS_V2_VALUES = [
 
 export async function updateBookingPipelineAction(bookingId: string, statusV2: string) {
   try {
-    const admin = await requireAdmin();
+    const admin = await requireBookingsAccess();
 
     if (!BOOKING_STATUS_V2_VALUES.includes(statusV2 as BookingStatusV2)) {
       return { success: false, error: "Invalid pipeline status" };
@@ -116,7 +120,7 @@ export async function updateBookingQuoteAction(bookingId: string, data: {
   quoteTotalCents?: number; depositPercent?: number; internalNotes?: string;
 }) {
   try {
-    await requireAdmin();
+    await requireBookingsAccess();
     const updated = await prisma.booking.update({
       where: { id: bookingId },
       data: {
@@ -134,7 +138,7 @@ export async function updateBookingQuoteAction(bookingId: string, data: {
 
 export async function updateBookingStatusAction(bookingId: string, newStatus: string) {
   try {
-    const admin = await requireAdmin();
+    const admin = await requireBookingsAccess();
 
     if (!isBookingStatus(newStatus)) {
       return {
@@ -198,7 +202,7 @@ export async function updateBookingStatusAction(bookingId: string, newStatus: st
 
 export async function getBookingStats() {
   try {
-    await requireAdmin();
+    await requireBookingsAccess();
 
     const [total, requested, confirmed, completed, paid, unpaid] = await Promise.all([
       prisma.booking.count(),

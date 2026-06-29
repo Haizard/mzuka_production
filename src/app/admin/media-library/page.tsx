@@ -1,12 +1,12 @@
 "use server";
 
 import Link from "next/link";
-import { requireAdmin } from "@/lib/auth";
+import { requireAdminAccess } from "@/lib/admin-permissions";
 import { prisma } from "@/lib/db";
 import { Camera, Film, Eye, Download, Star, GalleryHorizontalEnd } from "lucide-react";
 
 async function getMediaLibraryData() {
-  await requireAdmin();
+  await requireAdminAccess("/admin/media-library");
 
   const [totalAssets, photos, videos, released, totalDownloads, galleries, recentAssets] = await Promise.all([
     prisma.mediaAsset.count(),

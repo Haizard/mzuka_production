@@ -1,7 +1,7 @@
 "use server";
 
 import type { InvoiceStatus, ExpenseCategory, ContractStatus } from "@prisma/client";
-import { requireAdmin } from "@/lib/auth";
+import { requireAdminAccess } from "@/lib/admin-permissions";
 import { prisma } from "@/lib/db";
 import { nanoid } from "nanoid";
 
@@ -9,6 +9,22 @@ import { nanoid } from "nanoid";
 
 function cuid() {
   return nanoid(25);
+}
+
+function requireFinanceAccess() {
+  return requireAdminAccess("/admin/finance");
+}
+
+function requireInvoiceAccess() {
+  return requireAdminAccess("/admin/finance/invoices");
+}
+
+function requireExpenseAccess() {
+  return requireAdminAccess("/admin/finance/expenses");
+}
+
+function requireContractAccess() {
+  return requireAdminAccess("/admin/finance/contracts");
 }
 
 async function nextInvoiceNumber(): Promise<string> {
@@ -22,7 +38,7 @@ async function nextInvoiceNumber(): Promise<string> {
 
 export async function getFinanceSummary() {
   try {
-    await requireAdmin();
+    await requireFinanceAccess();
 
     const now = new Date();
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
@@ -103,7 +119,7 @@ export async function createInvoiceAction(data: {
   taxPercent?: number;
 }) {
   try {
-    const admin = await requireAdmin();
+    const admin = await requireInvoiceAccess();
 
     const subtotal  = data.items.reduce((s, i) => s + i.quantity * i.unitCents, 0);
     const taxPct    = data.taxPercent ?? 0;
@@ -155,7 +171,7 @@ export async function createInvoiceAction(data: {
 
 export async function updateInvoiceStatusAction(invoiceId: string, status: InvoiceStatus) {
   try {
-    await requireAdmin();
+    await requireInvoiceAccess();
 
     const invoice = await prisma.invoice.update({
       where: { id: invoiceId },
@@ -174,7 +190,7 @@ export async function updateInvoiceStatusAction(invoiceId: string, status: Invoi
 
 export async function deleteInvoiceAction(invoiceId: string) {
   try {
-    await requireAdmin();
+    await requireInvoiceAccess();
     await prisma.invoice.delete({ where: { id: invoiceId } });
     return { success: true };
   } catch (error) {
@@ -185,7 +201,7 @@ export async function deleteInvoiceAction(invoiceId: string) {
 
 export async function getAllInvoices(filters: { status?: InvoiceStatus; clientId?: string } = {}) {
   try {
-    await requireAdmin();
+    await requireInvoiceAccess();
 
     const where: Record<string, unknown> = {};
     if (filters.status)   where.status   = filters.status;
@@ -210,7 +226,7 @@ export async function getAllInvoices(filters: { status?: InvoiceStatus; clientId
 
 export async function getInvoiceById(invoiceId: string) {
   try {
-    await requireAdmin();
+    await requireInvoiceAccess();
 
     const invoice = await prisma.invoice.findUnique({
       where: { id: invoiceId },
@@ -241,7 +257,7 @@ export async function createExpenseAction(data: {
   receiptUrl?: string;
 }) {
   try {
-    await requireAdmin();
+    await requireExpenseAccess();
 
     const expense = await prisma.expense.create({
       data: {
@@ -266,7 +282,7 @@ export async function createExpenseAction(data: {
 
 export async function deleteExpenseAction(expenseId: string) {
   try {
-    await requireAdmin();
+    await requireExpenseAccess();
     await prisma.expense.delete({ where: { id: expenseId } });
     return { success: true };
   } catch (error) {
@@ -277,7 +293,7 @@ export async function deleteExpenseAction(expenseId: string) {
 
 export async function getAllExpenses(filters: { category?: ExpenseCategory; bookingId?: string } = {}) {
   try {
-    await requireAdmin();
+    await requireExpenseAccess();
 
     const where: Record<string, unknown> = {};
     if (filters.category)  where.category  = filters.category;
@@ -298,7 +314,7 @@ export async function getAllExpenses(filters: { category?: ExpenseCategory; book
 
 export async function getExpensesByCategory() {
   try {
-    await requireAdmin();
+    await requireExpenseAccess();
 
     const grouped = await prisma.expense.groupBy({
       by: ["category"],
@@ -324,7 +340,7 @@ export async function createContractAction(data: {
   expiresAt?: string;
 }) {
   try {
-    const admin = await requireAdmin();
+    const admin = await requireContractAccess();
 
     const contract = await prisma.contract.create({
       data: {
@@ -361,7 +377,7 @@ export async function createContractAction(data: {
 
 export async function updateContractStatusAction(contractId: string, status: ContractStatus) {
   try {
-    await requireAdmin();
+    await requireContractAccess();
 
     const contract = await prisma.contract.update({
       where: { id: contractId },
@@ -380,7 +396,7 @@ export async function updateContractStatusAction(contractId: string, status: Con
 
 export async function deleteContractAction(contractId: string) {
   try {
-    await requireAdmin();
+    await requireContractAccess();
     await prisma.contract.delete({ where: { id: contractId } });
     return { success: true };
   } catch (error) {
@@ -391,7 +407,7 @@ export async function deleteContractAction(contractId: string) {
 
 export async function getAllContracts(filters: { status?: ContractStatus; clientId?: string } = {}) {
   try {
-    await requireAdmin();
+    await requireContractAccess();
 
     const where: Record<string, unknown> = {};
     if (filters.status)   where.status   = filters.status;
@@ -417,7 +433,7 @@ export async function getAllContracts(filters: { status?: ContractStatus; client
 
 export async function getApprovedClients() {
   try {
-    await requireAdmin();
+    await requireFinanceAccess();
     const clients = await prisma.user.findMany({
       where: { role: "CLIENT", approvalStatus: "APPROVED" },
       select: { id: true, name: true, email: true },

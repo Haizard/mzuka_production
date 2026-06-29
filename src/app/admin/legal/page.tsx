@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Scale, FileText, ExternalLink } from "lucide-react";
+import { requireAdminAccess } from "@/lib/admin-permissions";
 
 const legalDocs = [
   {
@@ -40,7 +41,9 @@ const legalDocs = [
   },
 ];
 
-export default function LegalPage() {
+export default async function LegalPage() {
+  await requireAdminAccess("/admin/legal");
+
   return (
     <main className="space-y-6">
       <div>

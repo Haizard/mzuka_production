@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { ArrowLeft, Calendar, MapPin, DollarSign, FileText, AlertCircle, Users, Camera, Video, Clock, Package, Star } from "lucide-react";
-import { requireAdmin } from "@/lib/auth";
+import { requireAdminAccess } from "@/lib/admin-permissions";
 import { prisma } from "@/lib/db";
 import { BookingReminders } from "@/components/booking-reminders";
 import { AdminBookingActions } from "./admin-booking-actions";
@@ -21,7 +21,7 @@ interface AdminBookingDetailPageProps {
 }
 
 export default async function AdminBookingDetailPage({ params }: AdminBookingDetailPageProps) {
-  await requireAdmin();
+  await requireAdminAccess("/admin/bookings");
   const { id } = await params;
 
   const booking = await prisma.booking.findUnique({

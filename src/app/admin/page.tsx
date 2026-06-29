@@ -9,11 +9,11 @@ import {
   WalletCards,
 } from "lucide-react";
 import { logoutAction } from "@/app/(auth)/actions";
-import { requireAdmin } from "@/lib/auth";
+import { requireAdminAccess } from "@/lib/admin-permissions";
 import { prisma } from "@/lib/db";
 
 export default async function AdminPage() {
-  const admin = await requireAdmin();
+  const admin = await requireAdminAccess("/admin");
   const [totalClients, pendingClients, totalBookings, totalGalleries] =
     await Promise.all([
       prisma.user.count({ where: { role: "CLIENT" } }),

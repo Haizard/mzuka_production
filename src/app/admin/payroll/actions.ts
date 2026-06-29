@@ -1,11 +1,15 @@
 "use server";
 
-import { requireAdmin } from "@/lib/auth";
+import { requireAdminAccess } from "@/lib/admin-permissions";
 import { prisma } from "@/lib/db";
+
+function requirePayrollAccess() {
+  return requireAdminAccess("/admin/payroll");
+}
 
 export async function getPayrollDataAction() {
   try {
-    await requireAdmin();
+    await requirePayrollAccess();
 
     const [staff, payrollExpenses] = await Promise.all([
       prisma.user.findMany({
@@ -34,7 +38,7 @@ export async function recordPayrollPaymentAction(data: {
   notes?: string;
 }) {
   try {
-    await requireAdmin();
+    await requirePayrollAccess();
 
     const expense = await prisma.expense.create({
       data: {
@@ -64,7 +68,7 @@ export async function recordPayrollPaymentAction(data: {
 
 export async function getPayrollSummaryAction() {
   try {
-    await requireAdmin();
+    await requirePayrollAccess();
 
     const now = new Date();
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);

@@ -1,6 +1,6 @@
 "use server";
 
-import { requireAdmin } from "@/lib/auth";
+import { canManageEmployees, requireAdminAccess } from "@/lib/admin-permissions";
 import { prisma } from "@/lib/db";
 import { hashPassword } from "@/lib/password";
 import { nanoid } from "nanoid";
@@ -18,7 +18,8 @@ export async function createStaffMemberAction(data: {
   staffRole: StaffRoleValue;
 }) {
   try {
-    await requireAdmin();
+    const admin = await requireAdminAccess("/admin/employees");
+    if (!canManageEmployees(admin)) return { success: false, error: "Forbidden" };
 
     const existing = await prisma.user.findUnique({ where: { email: data.email } });
     if (existing) return { success: false, error: "An account with this email already exists" };
@@ -78,7 +79,8 @@ export async function createStaffMemberAction(data: {
 
 export async function updateStaffRoleAction(staffId: string, staffRole: string) {
   try {
-    await requireAdmin();
+    const admin = await requireAdminAccess("/admin/employees");
+    if (!canManageEmployees(admin)) return { success: false, error: "Forbidden" };
 
     const staff = await prisma.user.findUnique({ where: { id: staffId } });
     if (!staff) return { success: false, error: "Staff member not found" };
@@ -113,5 +115,4 @@ export async function updateStaffRoleAction(staffId: string, staffRole: string) 
     return { success: false, error: "Failed to update role" };
   }
 }
-
 

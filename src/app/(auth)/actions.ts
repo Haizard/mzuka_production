@@ -132,8 +132,12 @@ export async function loginAction(
     redirect("/pending-approval");
   }
 
-  if (["FOUNDER", "ADMIN", "STAFF"].includes(user.role)) {
+  if (["FOUNDER", "ADMIN"].includes(user.role)) {
     redirect("/admin");
+  }
+
+  if (user.role === "STAFF") {
+    redirect("/staff");
   }
 
   redirect("/client");
