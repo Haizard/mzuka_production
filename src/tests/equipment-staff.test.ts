@@ -83,6 +83,21 @@ describe("Staff account creation", () => {
     expect(user.staffRole).toBe("VIDEO_EDITOR");
   });
 
+  it("creates a human resource staff member with HR role", async () => {
+    const user = await prisma.user.create({
+      data: {
+        id: cuid(), name: "Test HR",
+        email: `hr-${Date.now()}@mg-test.invalid`,
+        passwordHash: hashPwd("test1234!"),
+        role: "STAFF", approvalStatus: "APPROVED",
+        staffRole: "HUMAN_RESOURCE", isProductionManager: false,
+      },
+    });
+    cleanup.users.push(user.id);
+    expect(user.staffRole).toBe("HUMAN_RESOURCE");
+    expect(user.role).toBe("STAFF");
+  });
+
   it("can update staffRole to promote to production manager", async () => {
     const user = await prisma.user.create({
       data: {

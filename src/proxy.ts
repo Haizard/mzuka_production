@@ -3,7 +3,7 @@
  * Runs before every matched request.
  */
 import { NextRequest, NextResponse } from "next/server";
-import { Limiters } from "@/lib/rate-limit";
+import { Limiters, getStoreSnapshot } from "@/lib/rate-limit";
 
 // Routes and their rate-limit profiles
 const RATE_LIMITED_ROUTES: Array<{
@@ -25,11 +25,41 @@ export function proxy(request: NextRequest) {
     request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
     "unknown";
 
+  // Expose a debug snapshot endpoint from the proxy process so we can inspect
+  // the in-memory limiter used by the proxy (same-process). Guarded by
+  // DEBUG_RATE_LIMIT=1 or x-debug-key matching DEBUG_SECRET.
+  if (pathname === "/api/debug/rate-limit") {
+    const enabled = process.env.DEBUG_RATE_LIMIT === "1";
+    const headerKey = request.headers.get("x-debug-key");
+    const secretMatch = headerKey && process.env.DEBUG_SECRET && headerKey === process.env.DEBUG_SECRET;
+
+    if (!enabled && !secretMatch) {
+      return new NextResponse(
+        JSON.stringify({ error: "Forbidden" }),
+        { status: 403, headers: { "Content-Type": "application/json" } }
+      );
+    }
+
+    const ipFilter = request.nextUrl.searchParams.get("ip");
+    const { now, snapshots } = getStoreSnapshot();
+    const filtered = ipFilter ? snapshots.filter((s) => s.key.includes(ipFilter)) : snapshots;
+
+    return new NextResponse(JSON.stringify({ now, count: filtered.length, entries: filtered }), {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
+
   for (const { pattern, limiter } of RATE_LIMITED_ROUTES) {
     if (pattern.test(pathname)) {
       const result = limiter(ip);
 
       if (!result.allowed) {
+        // Log blocked attempts for debugging (IP + route + reset)
+        try {
+          // eslint-disable-next-line no-console
+          console.warn(`[rate-limit] blocked ${ip} -> ${pathname}, resetAt=${new Date(result.resetAt).toISOString()}`);
+        } catch {}
         return new NextResponse(
           JSON.stringify({
             error: "Too many requests. Please slow down.",

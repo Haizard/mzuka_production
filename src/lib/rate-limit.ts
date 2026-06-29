@@ -57,9 +57,9 @@ export function rateLimit(key: string, config: RateLimitConfig): RateLimitResult
 
 // Pre-configured limiters for each sensitive area
 export const Limiters = {
-  /** Login / register — 10 attempts per 15 minutes per IP */
+  /** Login / register — increased to 30 attempts per 15 minutes per IP (less aggressive) */
   auth: (ip: string) =>
-    rateLimit(`auth:${ip}`, { limit: 10, windowSecs: 900 }),
+    rateLimit(`auth:${ip}`, { limit: 30, windowSecs: 900 }),
 
   /** Gallery view — 60 requests per minute per IP */
   gallery: (ip: string) =>
@@ -73,3 +73,31 @@ export const Limiters = {
   webhook: (ip: string) =>
     rateLimit(`webhook:${ip}`, { limit: 100, windowSecs: 60 }),
 } as const;
+
+// Dev helper: return a snapshot of the in-memory store for debugging.
+// Only intended for local inspection; expose carefully via a protected endpoint.
+export function getStoreSnapshot() {
+  const now = Date.now();
+  const snapshots: Array<{
+    key: string;
+    tokens: number;
+    lastRefill: number;
+    // best-effort estimate of reset timestamp (ms)
+    resetAt: number;
+    remaining: number;
+    windowSecs: number;
+  }> = [];
+
+  for (const [key, bucket] of store.entries()) {
+    let windowSecs = 60; // default
+    if (key.startsWith("auth:")) windowSecs = 900;
+    else if (key.startsWith("gallery:")) windowSecs = 60;
+    else if (key.startsWith("cron:")) windowSecs = 60;
+    else if (key.startsWith("webhook:")) windowSecs = 60;
+
+    const resetAt = bucket.lastRefill + windowSecs * 1000;
+    snapshots.push({ key, tokens: bucket.tokens, lastRefill: bucket.lastRefill, resetAt, remaining: bucket.tokens, windowSecs });
+  }
+
+  return { now, snapshots };
+}

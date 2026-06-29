@@ -3,13 +3,14 @@
 import { redirect } from "next/navigation";
 import { requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { canManageEmployees } from "@/lib/admin-permissions";
 import { Users } from "lucide-react";
 import { EmployeeManager } from "./employee-manager";
 import { STAFF_ROLES } from "./staff-roles";
 
 async function getData() {
   const admin = await requireAdmin();
-  if (!["FOUNDER","ADMIN"].includes(admin.role)) redirect("/admin");
+  if (!canManageEmployees(admin)) redirect("/admin");
 
   const staff = await prisma.user.findMany({
     where: { role: { in: ["FOUNDER","ADMIN","STAFF"] }, approvalStatus: "APPROVED" },
