@@ -47,9 +47,12 @@ type StaffRoleLike = string | null;
 
 function filterNav(staffRole: StaffRoleLike, isFounder: boolean): NavItem[] {
   const items: NavItem[] = ALL_NAV.filter((item) => {
-    if (isFounder || staffRole === "ADMIN" || staffRole === null) return true;
-    if (item.roles === null) return true; // available to everyone
-    return staffRole ? item.roles.includes(staffRole) : false;
+    if (isFounder) return true;
+    if (staffRole === "ADMIN") return true;
+    // null staffRole = unassigned STAFF — show only universal items
+    if (staffRole === null) return item.roles === null;
+    if (item.roles === null) return true; // Academy, Dashboard shown to all
+    return item.roles.includes(staffRole);
   }) as NavItem[];
 
   if (isFounder) {

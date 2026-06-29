@@ -90,10 +90,12 @@ export async function updateStaffRoleAction(staffId: string, staffRole: string) 
     // they gain full admin-level access immediately (session re-validates from DB).
     // All other staffRoles stay as STAFF in the UserRole enum.
     const newUserRole = staffRole === "ADMIN" ? "ADMIN" : "STAFF";
+    // Sync isProductionManager with staffRole so both signals stay consistent
+    const isPM = staffRole === "PRODUCTION_MANAGER";
 
     await prisma.user.update({
       where: { id: staffId },
-      data: { staffRole, role: newUserRole },
+      data: { staffRole, role: newUserRole, isProductionManager: isPM },
     });
 
     await prisma.auditLog.create({
