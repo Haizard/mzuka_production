@@ -1,7 +1,8 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
-import { Upload, Loader2, Check, X, Sparkles, Star, Trash2, AlertTriangle } from "lucide-react";
+import { Upload, Loader2, Check, X, Sparkles, Star, Trash2, AlertTriangle, ExternalLink } from "lucide-react";
 import {
   uploadMediaAssetAction,
   generatePreviewAction,
@@ -197,7 +198,15 @@ export default function AdminGalleriesPage() {
                   {/* Header */}
                   <div className="flex items-start justify-between gap-4 mb-4">
                     <div>
-                      <h3 className="font-semibold text-white">{gallery.title}</h3>
+                      <div className="flex items-center gap-2">
+                        <h3 className="font-semibold text-white">{gallery.title}</h3>
+                        <Link
+                          href={`/admin/galleries/${gallery.id}`}
+                          className="inline-flex items-center gap-1 text-[10px] text-violet-400 hover:text-violet-300 transition border border-violet-500/30 rounded px-1.5 py-0.5"
+                        >
+                          <ExternalLink className="h-2.5 w-2.5" /> Details &amp; AI
+                        </Link>
+                      </div>
                       <p className="text-sm text-zinc-400">{gallery.booking.title}</p>
                       <p className="text-xs text-zinc-500 mt-0.5">Client: {gallery.booking.client.name}</p>
                     </div>

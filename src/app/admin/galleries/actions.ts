@@ -203,7 +203,7 @@ export async function generatePreviewAction(mediaAssetId: string) {
  * and saves the AiAnalysis record.
  * Returns the scores and a release recommendation.
  */
-export async function analyzeMediaAssetAction(mediaAssetId: string) {
+export async function analyzeMediaAssetAction(mediaAssetId: string, forceReanalyze = false) {
   try {
     await requireAdmin();
 
@@ -214,11 +214,9 @@ export async function analyzeMediaAssetAction(mediaAssetId: string) {
     if (!asset) return { success: false, error: "Media asset not found" };
     if (asset.kind !== "PHOTO") return { success: false, error: "AI scoring only supports photos" };
 
-    // Don't re-score if already done
-    const existing = await prisma.aiAnalysis.findUnique({
-      where: { mediaAssetId },
-    });
-    if (existing) return { success: true, analysis: existing, cached: true };
+    // Return cached result unless force-reanalyze requested
+    const existing = await prisma.aiAnalysis.findUnique({ where: { mediaAssetId } });
+    if (existing && !forceReanalyze) return { success: true, analysis: existing, cached: true };
 
     const bucket = process.env.AWS_S3_BUCKET;
     if (!bucket) return { success: false, error: "S3 bucket not configured" };
@@ -227,13 +225,25 @@ export async function analyzeMediaAssetAction(mediaAssetId: string) {
     const imageBuffer = await downloadS3Object(asset.originalKey);
     const imageBase64 = imageBuffer.toString("base64");
 
-    // Score with OpenAI Vision
+    // Score with OpenAI Vision (gracefully returns placeholder if no API key)
     const scores = await scorePhoto(imageBase64, asset.mimeType);
 
-    // Persist the analysis
-    const analysis = await prisma.aiAnalysis.create({
-      data: {
+    // Upsert — replaces existing record on re-analyze
+    const analysis = await prisma.aiAnalysis.upsert({
+      where: { mediaAssetId },
+      create: {
         mediaAssetId,
+        sharpness:    scores.sharpness,
+        lighting:     scores.lighting,
+        faceQuality:  scores.faceQuality,
+        composition:  scores.composition,
+        colorGrade:   scores.colorGrade,
+        background:   scores.background,
+        emotion:      scores.emotion,
+        overallScore: scores.overallScore,
+        notes:        scores.notes,
+      },
+      update: {
         sharpness:    scores.sharpness,
         lighting:     scores.lighting,
         faceQuality:  scores.faceQuality,
