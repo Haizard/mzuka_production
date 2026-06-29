@@ -113,6 +113,7 @@ export async function getCurrentUser() {
       role: true,
       staffRole: true,
       approvalStatus: true,
+      isProductionManager: true,
       createdAt: true,
     },
   });

@@ -428,7 +428,13 @@ export async function getGalleryAccessUrls(
     const gallery = await prisma.gallery.findUnique({
       where: { id: galleryId },
       include: {
-        mediaAssets: true,
+        mediaAssets: {
+          select: {
+            id: true, kind: true, originalKey: true, previewKey: true,
+            trailerKey: true, filename: true, mimeType: true,
+            width: true, height: true, releaseStatus: true,
+          },
+        },
         booking: { include: { client: true, payments: true } },
       },
     });

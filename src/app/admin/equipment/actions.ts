@@ -13,7 +13,7 @@ async function requireProductionManager() {
   const user = await getCurrentUser();
   if (!user) throw new Error("Unauthorized");
   const isAdmin = ["FOUNDER", "ADMIN"].includes(user.role);
-  const isPM    = user.role === "STAFF" && (user as { isProductionManager?: boolean }).isProductionManager;
+  const isPM    = user.role === "STAFF" && user.isProductionManager === true;
   if (!isAdmin && !isPM) throw new Error("Forbidden: Production Manager access required");
   return user;
 }
