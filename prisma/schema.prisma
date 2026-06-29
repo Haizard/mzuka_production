@@ -247,6 +247,7 @@ model MediaAsset {
   kind           MediaKind
   originalKey    String
   previewKey     String?
+  trailerKey     String?
   filename       String
   mimeType       String
   sizeBytes      BigInt?
