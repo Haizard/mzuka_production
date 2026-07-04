@@ -109,6 +109,7 @@ export async function loginAction(
       id: true,
       passwordHash: true,
       role: true,
+      staffRole: true,
       approvalStatus: true,
     },
   });
@@ -137,6 +138,12 @@ export async function loginAction(
   }
 
   if (user.role === "STAFF") {
+    // Admin-side staff roles → admin panel
+    const adminStaffRoles = ["ADMIN", "PRODUCTION_MANAGER", "COORDINATOR", "HUMAN_RESOURCE"];
+    if (user.staffRole && adminStaffRoles.includes(user.staffRole)) {
+      redirect("/admin");
+    }
+    // Field staff → staff task portal
     redirect("/staff");
   }
 

@@ -30,6 +30,23 @@ a {
   -webkit-tap-highlight-color: transparent;
 }
 
+/* ── Fix native select dropdown visibility ───────────────────────────── */
+select {
+  color-scheme: dark;
+}
+
+select option {
+  background-color: #1a1a1a;
+  color: #f4f4f5;
+}
+
+select option:hover,
+select option:focus,
+select option:checked {
+  background-color: #2a2a2a;
+  color: #ffffff;
+}
+
 ::selection {
   background: var(--gold);
   color: #050505;

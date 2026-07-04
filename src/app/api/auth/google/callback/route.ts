@@ -137,6 +137,15 @@ export async function GET(req: NextRequest) {
     }
 
     if (user.role === "STAFF") {
+      // Fetch staffRole to determine correct destination
+      const staffUser = await prisma.user.findUnique({
+        where: { id: user.id },
+        select: { staffRole: true },
+      });
+      const adminStaffRoles = ["ADMIN", "PRODUCTION_MANAGER", "COORDINATOR", "HUMAN_RESOURCE"];
+      if (staffUser?.staffRole && adminStaffRoles.includes(staffUser.staffRole)) {
+        return NextResponse.redirect(`${base}/admin`);
+      }
       return NextResponse.redirect(`${base}/staff`);
     }
 
