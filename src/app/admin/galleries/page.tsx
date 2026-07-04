@@ -1,0 +1,423 @@
+"use client";
+
+import Link from "next/link";
+import { useCallback, useEffect, useState } from "react";
+import { Upload, Loader2, Check, X, Sparkles, Star, Trash2, AlertTriangle, ExternalLink, Film } from "lucide-react";
+import {
+  uploadMediaAssetAction,
+  generatePreviewAction,
+  analyzeGalleryAction,
+  getAdminGalleries,
+  releaseMediaAssetsAction,
+  cleanupOrphanedAssetsAction,
+  // getTrailerUploadUrlAction,
+  // saveTrailerKeyAction,
+} from "./actions";
+import { prisma } from "@/lib/db";
+
+interface AiAnalysis {
+  overallScore: number;
+  sharpness: number;
+  lighting: number;
+  composition: number;
+  notes: string;
+  recommendRelease?: boolean;
+}
+
+interface MediaAsset {
+  id: string;
+  filename: string;
+  kind: string;
+  releaseStatus: string;
+  previewKey: string | null;
+  trailerKey: string | null;
+  originalKey: string;
+  createdAt: Date;
+  aiAnalysis?: AiAnalysis | null;
+}
+
+interface Gallery {
+  id: string;
+  title: string;
+  slug: string;
+  createdAt: Date;
+  mediaAssets: MediaAsset[];
+  booking: {
+    id: string;
+    title: string;
+    client: { name: string };
+    payments: { status: string }[];
+  };
+}
+
+export default function AdminGalleriesPage() {
+  const [galleries, setGalleries]         = useState<Gallery[]>([]);
+  const [isLoading, setIsLoading]         = useState(true);
+  const [uploadingId, setUploadingId]     = useState<string | null>(null);
+  const [uploadError, setUploadError]     = useState<string | null>(null);
+  const [releaseLoading, setReleaseLoading]   = useState<string | null>(null);
+  const [analysisLoading, setAnalysisLoading] = useState<string | null>(null);
+  const [cleanupLoading, setCleanupLoading]   = useState<string | null>(null);
+  const [cleanupMsg, setCleanupMsg]           = useState<string | null>(null);
+  const [trailerUploadingId, setTrailerUploadingId] = useState<string | null>(null);
+
+  const loadGalleries = useCallback(async () => {
+    const result = await getAdminGalleries();
+    if (result.success) setGalleries(result.galleries as unknown as Gallery[]);
+    setIsLoading(false);
+  }, []);
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    loadGalleries();
+  }, [loadGalleries]);
+
+  const handleFileUpload = async (
+    e: React.ChangeEvent<HTMLInputElement>,
+    galleryId: string
+  ) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Reset input so same file can be re-selected after a failure
+    e.target.value = "";
+
+    setUploadingId(galleryId);
+    setUploadError(null);
+
+    try {
+      const mediaKind = file.type.startsWith("video/") ? "VIDEO" : "PHOTO";
+
+      // Step 1 — create DB record + get presigned PUT URL
+      const uploadResult = await uploadMediaAssetAction(
+        galleryId,
+        file.name,
+        file.type,
+        mediaKind,
+        undefined,
+        undefined,
+        file.size
+      );
+
+      if (!uploadResult.success || !uploadResult.uploadUrl || !uploadResult.mediaAsset) {
+        setUploadError(uploadResult.error ?? "Failed to prepare upload");
+        return;
+      }
+
+      // Step 2 — PUT file directly to S3
+      let s3Ok = false;
+      try {
+        const s3Response = await fetch(uploadResult.uploadUrl, {
+          method: "PUT",
+          body: file,
+          headers: { "Content-Type": file.type },
+        });
+        s3Ok = s3Response.ok;
+      } catch (fetchErr) {
+        console.error("S3 PUT failed:", fetchErr);
+      }
+
+      if (!s3Ok) {
+        // S3 upload failed — clean up the orphaned DB record immediately
+        await cleanupOrphanedAssetsAction(galleryId);
+        setUploadError("Upload to storage failed. Please try again.");
+        return;
+      }
+
+      // Step 3 — generate watermarked preview (server-side, photos only)
+      // Non-blocking — if this fails the upload is still successful
+      generatePreviewAction(uploadResult.mediaAsset.id)
+        .catch((err) => console.error("[galleries] preview generation failed:", err));
+
+      await loadGalleries();
+
+    } catch (error) {
+      console.error("Upload error:", error);
+      setUploadError("An unexpected error occurred. Please try again.");
+      // Clean up any orphaned record
+      await cleanupOrphanedAssetsAction(galleryId);
+    } finally {
+      setUploadingId(null);
+    }
+  };
+
+  const handleReleaseMedia = async (galleryId: string) => {
+    setReleaseLoading(galleryId);
+    await releaseMediaAssetsAction(galleryId);
+    await loadGalleries();
+    setReleaseLoading(null);
+  };
+
+  const handleAnalyzeGallery = async (galleryId: string) => {
+    setAnalysisLoading(galleryId);
+    await analyzeGalleryAction(galleryId);
+    await loadGalleries();
+    setAnalysisLoading(null);
+  };
+
+  const handleCleanup = async (galleryId: string) => {
+    setCleanupLoading(galleryId);
+    setCleanupMsg(null);
+    const result = await cleanupOrphanedAssetsAction(galleryId);
+    if (result.success) {
+      setCleanupMsg(
+        result.removed > 0
+          ? `Removed ${result.removed} failed upload${result.removed > 1 ? "s" : ""}`
+          : "No orphaned files found"
+      );
+      await loadGalleries();
+    }
+    setCleanupLoading(null);
+    setTimeout(() => setCleanupMsg(null), 4000);
+  };
+
+  const handleTrailerUpload = async (e: React.ChangeEvent<HTMLInputElement>, assetId: string) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+
+    // Trailer upload functionality not yet implemented
+    alert("Trailer upload feature coming soon.");
+    return;
+
+    /*
+    setTrailerUploadingId(assetId);
+    try {
+      const urlRes = await getTrailerUploadUrlAction(assetId, file.name, file.type);
+      if (!urlRes.success || !urlRes.uploadUrl || !urlRes.trailerKey) {
+        alert(urlRes.error ?? "Failed to prepare trailer upload");
+        return;
+      }
+      const s3Res = await fetch(urlRes.uploadUrl, { method: "PUT", body: file, headers: { "Content-Type": file.type } });
+      if (!s3Res.ok) { alert("Trailer upload to storage failed. Try again."); return; }
+      await saveTrailerKeyAction(assetId, urlRes.trailerKey);
+      await loadGalleries();
+    } catch (err) {
+      console.error("Trailer upload error:", err);
+      alert("Trailer upload failed.");
+    } finally {
+      setTrailerUploadingId(null);
+    }
+    */
+  };
+
+  return (
+    <main className="space-y-6">
+      <div>
+        <h2 className="text-2xl font-bold text-white">Galleries</h2>
+        <p className="mt-1 text-sm text-zinc-400">Manage client photo and video galleries</p>
+      </div>
+
+      {cleanupMsg && (
+        <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-300">
+          ✓ {cleanupMsg}
+        </div>
+      )}
+
+      <div className="rounded-lg border border-white/10 bg-[var(--surface)]">
+        {isLoading ? (
+          <div className="p-8 text-center text-zinc-400">Loading galleries…</div>
+        ) : galleries.length === 0 ? (
+          <div className="p-8 text-center text-zinc-400">No galleries yet. Create one from a booking.</div>
+        ) : (
+          <div className="divide-y divide-white/10">
+            {galleries.map((gallery) => {
+              // Count orphaned = assets with no previewKey AND kind=PHOTO (may have failed)
+              const draftCount    = gallery.mediaAssets.filter((a) => a.releaseStatus === "DRAFT").length;
+              const releasedCount = gallery.mediaAssets.filter((a) => a.releaseStatus === "RELEASED").length;
+              const isPaid        = gallery.booking.payments.some((p) => p.status === "PAID");
+
+              return (
+                <div key={gallery.id} className="p-6 hover:bg-white/5 transition">
+                  {/* Header */}
+                  <div className="flex items-start justify-between gap-4 mb-4">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <h3 className="font-semibold text-white">{gallery.title}</h3>
+                        <Link
+                          href={`/admin/galleries/${gallery.id}`}
+                          className="inline-flex items-center gap-1 text-[10px] text-violet-400 hover:text-violet-300 transition border border-violet-500/30 rounded px-1.5 py-0.5"
+                        >
+                          <ExternalLink className="h-2.5 w-2.5" /> Details &amp; AI
+                        </Link>
+                      </div>
+                      <p className="text-sm text-zinc-400">{gallery.booking.title}</p>
+                      <p className="text-xs text-zinc-500 mt-0.5">Client: {gallery.booking.client.name}</p>
+                    </div>
+                    <div className="text-right text-xs text-zinc-500 space-y-0.5">
+                      <p><span className="text-white font-semibold">{gallery.mediaAssets.length}</span> total</p>
+                      <p><span className="text-emerald-400 font-semibold">{releasedCount}</span> released</p>
+                      <p>{isPaid ? "✓ Paid" : "Unpaid"}</p>
+                    </div>
+                  </div>
+
+                  {/* Media list */}
+                  {gallery.mediaAssets.length > 0 && (
+                    <div className="mb-4 rounded-lg bg-white/5 p-4">
+                      <p className="text-xs text-zinc-500 uppercase mb-3">
+                        Media ({gallery.mediaAssets.length})
+                      </p>
+                      <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
+                        {gallery.mediaAssets.map((asset) => {
+                          const hasPreview = !!asset.previewKey;
+                          const isOrphan   = !hasPreview && asset.kind === "PHOTO";
+                          return (
+                            <div
+                              key={asset.id}
+                              className={`flex items-center justify-between text-sm p-2 rounded ${
+                                isOrphan ? "bg-red-500/10 border border-red-500/20" : "bg-white/5"
+                              }`}
+                            >
+                              <div className="min-w-0 flex-1">
+                                <p className={`truncate ${isOrphan ? "text-red-300" : "text-white"}`}>
+                                  {asset.filename}
+                                  {isOrphan && (
+                                    <span className="ml-2 text-xs text-red-400 font-medium">(upload failed)</span>
+                                  )}
+                                </p>
+                                <p className="text-xs text-zinc-500">
+                                  {asset.kind === "PHOTO" ? "📷" : "🎥"} {asset.kind}
+                                  {hasPreview && <span className="ml-1 text-emerald-500">· preview ready</span>}
+                                  {asset.kind === "VIDEO" && asset.trailerKey && <span className="ml-1 text-violet-400">· trailer ready</span>}
+                                  {asset.kind === "VIDEO" && !asset.trailerKey && !isOrphan && <span className="ml-1 text-amber-500">· no trailer</span>}
+                                </p>
+                              </div>
+                              <div className="flex items-center gap-3 ml-3 shrink-0">
+                                {asset.kind === "PHOTO" && asset.aiAnalysis && (
+                                  <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${
+                                    asset.aiAnalysis.overallScore >= 70
+                                      ? "bg-emerald-500/20 text-emerald-300"
+                                      : "bg-red-500/20 text-red-300"
+                                  }`}>
+                                    <Star className="inline h-3 w-3 mb-0.5 mr-0.5" />
+                                    {asset.aiAnalysis.overallScore}
+                                  </span>
+                                )}
+                                {/* Trailer upload for videos */}
+                                {asset.kind === "VIDEO" && !isOrphan && (
+                                  <label className="cursor-pointer" title={asset.trailerKey ? "Replace trailer" : "Upload trailer (≤3 min)"}>
+                                    <input
+                                      key={`trailer-${asset.id}`}
+                                      type="file"
+                                      accept="video/mp4,video/quicktime"
+                                      onChange={(e) => handleTrailerUpload(e, asset.id)}
+                                      disabled={trailerUploadingId === asset.id}
+                                      className="hidden"
+                                    />
+                                    <span className={`flex items-center gap-1 text-xs px-2 py-0.5 rounded-full border transition ${
+                                      trailerUploadingId === asset.id
+                                        ? "border-violet-500/30 text-violet-300 animate-pulse"
+                                        : asset.trailerKey
+                                        ? "border-violet-500/30 text-violet-300 hover:bg-violet-500/10"
+                                        : "border-amber-500/30 text-amber-300 hover:bg-amber-500/10"
+                                    }`}>
+                                      <Film className="h-3 w-3" />
+                                      {trailerUploadingId === asset.id ? "…" : asset.trailerKey ? "Trailer ✓" : "Trailer"}
+                                    </span>
+                                  </label>
+                                )}
+                                {asset.releaseStatus === "RELEASED"
+                                  ? <Check className="h-4 w-4 text-emerald-400" />
+                                  : <X className="h-4 w-4 text-zinc-500" />
+                                }
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Upload error */}
+                  {uploadError && uploadingId === null && (
+                    <div className="mb-3 flex items-center gap-2 rounded-lg border border-red-500/20 bg-red-500/10 px-4 py-2.5 text-sm text-red-300">
+                      <AlertTriangle className="h-4 w-4 shrink-0" />
+                      {uploadError}
+                    </div>
+                  )}
+
+                  {/* Actions row */}
+                  <div className="flex flex-wrap gap-2">
+                    {/* Upload */}
+                    <label className="flex-1 min-w-[180px] relative cursor-pointer">
+                      <input
+                        key={`upload-${gallery.id}`}
+                        type="file"
+                        accept="image/jpeg,image/jpg,image/png,image/webp,video/mp4,video/quicktime,video/x-matroska"
+                        onChange={(e) => handleFileUpload(e, gallery.id)}
+                        disabled={uploadingId !== null}
+                        className="hidden"
+                      />
+                      <div className="border-2 border-dashed border-white/10 hover:border-[var(--gold)]/40 rounded-lg p-4 text-center transition">
+                        {uploadingId === gallery.id ? (
+                          <>
+                            <Loader2 className="h-5 w-5 animate-spin mx-auto mb-2 text-[var(--gold)]" />
+                            <p className="text-sm text-zinc-400">Uploading…</p>
+                          </>
+                        ) : (
+                          <>
+                            <Upload className="h-5 w-5 mx-auto mb-2 text-zinc-500" />
+                            <p className="text-sm text-zinc-400">Upload photo or video</p>
+                            <p className="text-xs text-zinc-600 mt-0.5">jpg, png, webp, mp4, mov, mkv</p>
+                          </>
+                        )}
+                      </div>
+                    </label>
+
+                    <div className="flex flex-col gap-2">
+                      {/* Cleanup failed uploads — show if any asset has no previewKey */}
+                      {gallery.mediaAssets.some((a) => !a.previewKey) && (
+                        <button
+                          onClick={() => handleCleanup(gallery.id)}
+                          disabled={cleanupLoading === gallery.id}
+                          className="flex items-center gap-2 px-3 py-2 rounded-lg bg-red-600/20 hover:bg-red-600/30 text-red-300 text-sm font-medium transition disabled:opacity-50"
+                          title="Remove failed upload records"
+                        >
+                          {cleanupLoading === gallery.id
+                            ? <Loader2 className="h-4 w-4 animate-spin" />
+                            : <Trash2 className="h-4 w-4" />
+                          }
+                          Clean failed
+                        </button>
+                      )}
+
+                      {/* AI Analyse */}
+                      {gallery.mediaAssets.some((a) => a.kind === "PHOTO" && a.previewKey && !a.aiAnalysis) && (
+                        <button
+                          onClick={() => handleAnalyzeGallery(gallery.id)}
+                          disabled={analysisLoading === gallery.id}
+                          className="flex items-center gap-2 px-3 py-2 rounded-lg bg-violet-700 hover:bg-violet-600 text-white text-sm font-semibold transition disabled:opacity-50"
+                        >
+                          {analysisLoading === gallery.id
+                            ? <Loader2 className="h-4 w-4 animate-spin" />
+                            : <Sparkles className="h-4 w-4" />
+                          }
+                          Analyse
+                        </button>
+                      )}
+
+                      {/* Release */}
+                      {draftCount > 0 && gallery.mediaAssets.some((a) => a.previewKey) && (
+                        <button
+                          onClick={() => handleReleaseMedia(gallery.id)}
+                          disabled={releaseLoading === gallery.id}
+                          className="flex items-center gap-2 px-3 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold transition disabled:opacity-50"
+                        >
+                          {releaseLoading === gallery.id
+                            ? <Loader2 className="h-4 w-4 animate-spin" />
+                            : <Check className="h-4 w-4" />
+                          }
+                          Release ({draftCount})
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    </main>
+  );
+}

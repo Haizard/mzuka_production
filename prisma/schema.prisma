@@ -1,0 +1,601 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum UserRole {
+  FOUNDER
+  ADMIN
+  STAFF
+  CLIENT
+}
+
+enum ApprovalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  SUSPENDED
+}
+
+enum BookingStatus {
+  REQUESTED
+  CONFIRMED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum PaymentStatus {
+  UNPAID
+  DEPOSIT_PAID
+  PAID
+  REFUNDED
+  FAILED
+}
+
+enum MediaKind {
+  PHOTO
+  VIDEO
+}
+
+enum MediaReleaseStatus {
+  DRAFT
+  REVIEWED
+  RELEASED
+  HIDDEN
+}
+
+enum AuditAction {
+  LOGIN
+  CLIENT_APPROVED
+  BOOKING_CREATED
+  BOOKING_UPDATED
+  GALLERY_VIEWED
+  MEDIA_UPLOADED
+  MEDIA_RELEASED
+  PAYMENT_RECEIVED
+  DOWNLOAD_UNLOCKED
+  FILE_DOWNLOADED
+  ACCESS_REVOKED
+}
+
+enum ProjectStage {
+  SHOOTING
+  CULLING
+  EDITING
+  REVIEW
+  DELIVERED
+  ARCHIVED
+}
+
+enum TaskStatus {
+  TODO
+  IN_PROGRESS
+  DONE
+}
+
+model User {
+  id              String           @id @default(cuid())
+  name            String
+  email           String           @unique
+  phone           String?
+  passwordHash    String?
+  role            UserRole         @default(CLIENT)
+  approvalStatus  ApprovalStatus   @default(PENDING)
+  emailVerifiedAt DateTime?
+  phoneVerifiedAt DateTime?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  bookings        Booking[]        @relation("ClientBookings")
+  approvedClients ClientApproval[] @relation("ApprovedBy")
+  approvals       ClientApproval[] @relation("ClientApproval")
+  auditLogs       AuditLog[]
+  messages        Message[]
+  staffAssignments StaffAssignment[]
+  assignedTasks   ProjectTask[]    @relation("TaskAssignee")
+  projectNotes    ProjectNote[]    @relation("NoteAuthor")
+  clientComms     ClientCommunication[] @relation("CommUser")
+  invoices        Invoice[]        @relation("ClientInvoices")
+  contracts       Contract[]       @relation("ClientContracts")
+  aiChats         AiChat[]         @relation("UserChats")
+  isProductionManager Boolean      @default(false)
+  staffRole           String?      // ADMIN | PRODUCTION_MANAGER | PHOTOGRAPHER | VIDEO_EDITOR | EDITOR | COORDINATOR
+  equipmentAssignments EquipmentAssignment[] @relation("EquipmentAssignee")
+  equipmentReturnsRequested EquipmentReturn[] @relation("ReturnRequester")
+  equipmentReturnsReviewed  EquipmentReturn[] @relation("ReturnReviewer")
+  uploadedAssets  MediaAsset[]     @relation("UploadedByStaff")
+}
+
+model ClientApproval {
+  id         String         @id @default(cuid())
+  clientId   String
+  approverId String?
+  status     ApprovalStatus @default(PENDING)
+  notes      String?
+  decidedAt  DateTime?
+  createdAt  DateTime       @default(now())
+  approver   User?          @relation("ApprovedBy", fields: [approverId], references: [id])
+  client     User           @relation("ClientApproval", fields: [clientId], references: [id])
+}
+
+model ServicePackage {
+  id          String    @id @default(cuid())
+  name        String
+  description String
+  priceCents  Int
+  currency    String    @default("USD")
+  durationMin Int?
+  isActive    Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  bookings    Booking[]
+}
+
+enum DeliveryDeadline {
+  STANDARD
+  EXPRESS
+  URGENT
+}
+
+enum BookingStatusV2 {
+  INQUIRY
+  QUOTATION_SENT
+  AWAITING_DEPOSIT
+  CONFIRMED
+  CREW_ASSIGNED
+  EQUIPMENT_PREPARED
+  EVENT_DAY
+  MEDIA_UPLOADING
+  EDITING
+  QUALITY_REVIEW
+  READY_FOR_DELIVERY
+  CUSTOMER_NOTIFIED
+  DELIVERED
+  COMPLETED
+  ARCHIVED
+  CANCELLED
+}
+
+model Booking {
+  id            String        @id @default(cuid())
+  clientId      String
+  packageId     String?
+  title         String
+  serviceType   String
+  location      String?
+  scheduledAt   DateTime
+  endTime       DateTime?
+  eventType     String?
+  guestCount    Int?
+  venueType     String?
+  // Services & deliverables (stored as JSON)
+  servicesJson     Json @default("[]")
+  deliverablesJson Json @default("{}")
+  photoSpecJson    Json @default("{}")
+  videoSpecJson    Json @default("{}")
+  // Crew
+  crewPhotographers Int @default(0)
+  crewVideographers Int @default(0)
+  crewDroneOps      Int @default(0)
+  crewAssistants    Int @default(0)
+  // Coverage & overtime
+  includedHours       Int?
+  overtimeRatePerHour Int @default(0)
+  // Delivery
+  deliveryDeadline  DeliveryDeadline @default(STANDARD)
+  deliveryFeeCents  Int @default(0)
+  // Pricing
+  quoteTotalCents   Int @default(0)
+  depositPercent    Int @default(50)
+  // Client extras
+  alternatePhone  String?
+  organization    String?
+  billingAddress  String?
+  // Notes
+  specialRequests String?
+  internalNotes   String?
+  // Status
+  status        BookingStatus @default(REQUESTED)
+  statusV2      BookingStatusV2 @default(INQUIRY)
+  paymentStatus PaymentStatus @default(UNPAID)
+  notes         String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  client        User          @relation("ClientBookings", fields: [clientId], references: [id])
+  package       ServicePackage? @relation(fields: [packageId], references: [id])
+  gallery       Gallery?
+  payments      Payment[]
+  reminders     BookingReminder[]
+  project       Project?
+  invoices      Invoice[]
+  expenses      Expense[]
+  contracts     Contract[]
+}
+
+model BookingReminder {
+  id          String    @id @default(cuid())
+  bookingId   String
+  channel     String
+  scheduledAt DateTime
+  sentAt      DateTime?
+  createdAt   DateTime  @default(now())
+  booking     Booking   @relation(fields: [bookingId], references: [id])
+}
+
+model Gallery {
+  id              String    @id @default(cuid())
+  bookingId       String    @unique
+  title           String
+  slug            String    @unique
+  expiresAt       DateTime?
+  isDownloadOpen  Boolean   @default(false)
+  isShareOpen     Boolean   @default(false)
+  watermarkText   String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  booking         Booking   @relation(fields: [bookingId], references: [id])
+  mediaAssets     MediaAsset[]
+  accessLogs      AccessLog[]
+}
+
+model MediaAsset {
+  id             String             @id @default(cuid())
+  galleryId      String
+  kind           MediaKind
+  originalKey    String
+  previewKey     String?
+  trailerKey     String?
+  filename       String
+  mimeType       String
+  sizeBytes      BigInt?
+  width          Int?
+  height         Int?
+  releaseStatus  MediaReleaseStatus @default(DRAFT)
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+  gallery        Gallery            @relation(fields: [galleryId], references: [id])
+  aiAnalysis     AiAnalysis?
+  downloads      Download[]
+  uploadedByStaffId String?
+  uploadedBy     User?              @relation("UploadedByStaff", fields: [uploadedByStaffId], references: [id], onDelete: SetNull)
+}
+
+model AiAnalysis {
+  id           String     @id @default(cuid())
+  mediaAssetId String     @unique
+  sharpness    Int
+  lighting     Int
+  faceQuality  Int?
+  composition  Int
+  colorGrade   Int
+  background   Int
+  emotion      Int?
+  overallScore Int
+  notes        String?
+  createdAt    DateTime   @default(now())
+  mediaAsset   MediaAsset @relation(fields: [mediaAssetId], references: [id])
+}
+
+model Payment {
+  id                    String        @id @default(cuid())
+  bookingId             String
+  stripeCheckoutSession String?       @unique
+  stripePaymentIntent   String?       @unique
+  amountCents           Int
+  currency              String        @default("USD")
+  status                PaymentStatus @default(UNPAID)
+  createdAt             DateTime      @default(now())
+  updatedAt             DateTime      @updatedAt
+  booking               Booking       @relation(fields: [bookingId], references: [id])
+}
+
+model AccessLog {
+  id         String   @id @default(cuid())
+  galleryId  String
+  userId     String?
+  ipAddress  String?
+  userAgent  String?
+  deviceHash String?
+  action     String
+  createdAt  DateTime @default(now())
+  gallery    Gallery  @relation(fields: [galleryId], references: [id])
+}
+
+model Download {
+  id           String     @id @default(cuid())
+  mediaAssetId String
+  userId       String?
+  ipAddress    String?
+  createdAt    DateTime   @default(now())
+  mediaAsset   MediaAsset @relation(fields: [mediaAssetId], references: [id])
+}
+
+model Message {
+  id        String   @id @default(cuid())
+  userId    String
+  subject   String
+  body      String
+  channel   String
+  sentAt    DateTime?
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id])
+}
+
+model AuditLog {
+  id        String      @id @default(cuid())
+  actorId   String?
+  action    AuditAction
+  entity    String?
+  entityId  String?
+  metadata  Json?
+  ipAddress String?
+  createdAt DateTime    @default(now())
+  actor     User?       @relation(fields: [actorId], references: [id])
+}
+
+// ── Phase 5: MG AI Command Center ────────────────────────────────────────────
+
+model AiChat {
+  id        String      @id @default(cuid())
+  userId    String
+  title     String      @default("New Chat")
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+  user      User        @relation("UserChats", fields: [userId], references: [id], onDelete: Cascade)
+  messages  AiMessage[]
+}
+
+model AiMessage {
+  id        String   @id @default(cuid())
+  chatId    String
+  role      String   // "user" | "assistant" | "system"
+  content   String
+  createdAt DateTime @default(now())
+  chat      AiChat   @relation(fields: [chatId], references: [id], onDelete: Cascade)
+}
+
+model AcademyModule {
+  id          String   @id @default(cuid())
+  title       String
+  description String?
+  content     String
+  category    String   @default("general")
+  order       Int      @default(0)
+  isPublished Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+// ── Phase 4: Finance & Business Operations ────────────────────────────────────
+
+enum InvoiceStatus {
+  DRAFT
+  SENT
+  PAID
+  OVERDUE
+  CANCELLED
+}
+
+enum ExpenseCategory {
+  EQUIPMENT
+  TRAVEL
+  EDITING
+  MARKETING
+  SOFTWARE
+  VENUE
+  STAFF
+  OTHER
+}
+
+enum ContractStatus {
+  DRAFT
+  SENT
+  SIGNED
+  EXPIRED
+  CANCELLED
+}
+
+model Invoice {
+  id            String        @id @default(cuid())
+  bookingId     String?
+  clientId      String
+  number        String        @unique
+  status        InvoiceStatus @default(DRAFT)
+  subtotalCents Int           @default(0)
+  taxCents      Int           @default(0)
+  totalCents    Int           @default(0)
+  currency      String        @default("USD")
+  notes         String?
+  dueAt         DateTime?
+  paidAt        DateTime?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  booking       Booking?      @relation(fields: [bookingId], references: [id], onDelete: SetNull)
+  client        User          @relation("ClientInvoices", fields: [clientId], references: [id])
+  items         InvoiceItem[]
+}
+
+model InvoiceItem {
+  id          String   @id @default(cuid())
+  invoiceId   String
+  description String
+  quantity    Int      @default(1)
+  unitCents   Int      @default(0)
+  totalCents  Int      @default(0)
+  createdAt   DateTime @default(now())
+  invoice     Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+}
+
+model Expense {
+  id          String          @id @default(cuid())
+  category    ExpenseCategory @default(OTHER)
+  description String
+  amountCents Int             @default(0)
+  currency    String          @default("USD")
+  receiptUrl  String?
+  bookingId   String?
+  recordedAt  DateTime        @default(now())
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+  booking     Booking?        @relation(fields: [bookingId], references: [id], onDelete: SetNull)
+}
+
+model Contract {
+  id        String         @id @default(cuid())
+  bookingId String?
+  clientId  String
+  title     String
+  body      String
+  status    ContractStatus @default(DRAFT)
+  signedAt  DateTime?
+  expiresAt DateTime?
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+  booking   Booking?       @relation(fields: [bookingId], references: [id], onDelete: SetNull)
+  client    User           @relation("ClientContracts", fields: [clientId], references: [id])
+}
+
+// ── Phase 3: Production Management ───────────────────────────────────────────
+
+model Project {
+  id          String       @id @default(cuid())
+  bookingId   String       @unique
+  stage       ProjectStage @default(SHOOTING)
+  shootDate   DateTime?
+  editDueDate DateTime?
+  deliveredAt DateTime?
+  notes       String?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  booking     Booking      @relation(fields: [bookingId], references: [id])
+  assignments StaffAssignment[]
+  tasks       ProjectTask[]
+  internalNotes ProjectNote[]
+  communications ClientCommunication[]
+}
+
+model StaffAssignment {
+  id        String   @id @default(cuid())
+  projectId String
+  staffId   String
+  role      String   @default("Photographer")
+  createdAt DateTime @default(now())
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  staff     User     @relation(fields: [staffId], references: [id])
+}
+
+model ProjectTask {
+  id          String     @id @default(cuid())
+  projectId   String
+  title       String
+  description String?
+  status      TaskStatus @default(TODO)
+  assigneeId  String?
+  dueAt       DateTime?
+  completedAt DateTime?
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  project     Project    @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  assignee    User?      @relation("TaskAssignee", fields: [assigneeId], references: [id])
+  equipmentAssignments EquipmentAssignment[]
+}
+
+model ProjectNote {
+  id        String   @id @default(cuid())
+  projectId String
+  authorId  String
+  body      String
+  createdAt DateTime @default(now())
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  author    User     @relation("NoteAuthor", fields: [authorId], references: [id])
+}
+
+model ClientCommunication {
+  id        String   @id @default(cuid())
+  projectId String
+  userId    String
+  channel   String   // email | sms | in-app
+  subject   String
+  body      String
+  sentAt    DateTime?
+  createdAt DateTime @default(now())
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user      User     @relation("CommUser", fields: [userId], references: [id])
+}
+
+// ── Equipment Management ──────────────────────────────────────────────────────
+
+enum EquipmentStatus {
+  AVAILABLE
+  ASSIGNED
+  UNDER_MAINTENANCE
+  RETIRED
+}
+
+enum ConditionStatus {
+  EXCELLENT
+  GOOD
+  FAIR
+  DAMAGED
+}
+
+enum ReturnRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model EquipmentCategory {
+  id        String          @id @default(cuid())
+  name      String          @unique
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
+  items     EquipmentItem[]
+}
+
+model EquipmentItem {
+  id           String              @id @default(cuid())
+  name         String
+  categoryId   String
+  serialNumber String?             @unique
+  condition    ConditionStatus     @default(GOOD)
+  status       EquipmentStatus     @default(AVAILABLE)
+  notes        String?
+  createdAt    DateTime            @default(now())
+  updatedAt    DateTime            @updatedAt
+  category     EquipmentCategory   @relation(fields: [categoryId], references: [id])
+  assignments  EquipmentAssignment[]
+}
+
+model EquipmentAssignment {
+  id          String    @id @default(cuid())
+  itemId      String
+  taskId      String
+  assigneeId  String
+  assignedAt  DateTime  @default(now())
+  returnedAt  DateTime?
+  createdAt   DateTime  @default(now())
+  item        EquipmentItem  @relation(fields: [itemId], references: [id])
+  task        ProjectTask    @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  assignee    User           @relation("EquipmentAssignee", fields: [assigneeId], references: [id])
+  returns     EquipmentReturn[]
+}
+
+model EquipmentReturn {
+  id              String              @id @default(cuid())
+  assignmentId    String
+  requestedById   String
+  status          ReturnRequestStatus @default(PENDING)
+  returnNote      String?
+  rejectionReason String?
+  reviewedById    String?
+  reviewedAt      DateTime?
+  submittedAt     DateTime            @default(now())
+  createdAt       DateTime            @default(now())
+  assignment      EquipmentAssignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  requestedBy     User                @relation("ReturnRequester", fields: [requestedById], references: [id])
+  reviewedBy      User?               @relation("ReturnReviewer", fields: [reviewedById], references: [id])
+}
