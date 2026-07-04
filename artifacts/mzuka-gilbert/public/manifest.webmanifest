@@ -1,0 +1,56 @@
+{
+  "name": "MG MUZUKA GILBERT",
+  "short_name": "MG",
+  "description": "Luxury photography and videography booking platform. Book sessions, view protected galleries, and manage your event media.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#050505",
+  "theme_color": "#d4af37",
+  "orientation": "portrait-primary",
+  "categories": ["photography", "lifestyle", "business"],
+  "lang": "en",
+  "icons": [
+    {
+      "src": "/brand/mg-logo-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/brand/mg-logo-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/brand/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/brand/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Book a Session",
+      "short_name": "Book",
+      "description": "Book a new photography or videography session",
+      "url": "/client/bookings/new",
+      "icons": [{ "src": "/brand/mg-logo-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "My Galleries",
+      "short_name": "Galleries",
+      "description": "View your photo and video galleries",
+      "url": "/client/galleries",
+      "icons": [{ "src": "/brand/mg-logo-192.png", "sizes": "192x192" }]
+    }
+  ],
+  "prefer_related_applications": false
+}
