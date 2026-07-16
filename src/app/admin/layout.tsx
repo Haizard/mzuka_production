@@ -6,12 +6,14 @@ import {
   DollarSign, Receipt, TrendingDown, FileText,
   Bot, BarChart2, ImageIcon, ClipboardList,
   BookOpen, Users, Scale, Crown, Wrench, RotateCcw, Wallet, LogOut,
+  MessageSquare, Video,
 } from "lucide-react";
 import { requireAdmin } from "@/lib/auth";
 import { ADMIN_NAV_ITEMS } from "@/lib/admin-permissions";
 import { AdminMobileBottomNav } from "@/components/mobile-admin-nav";
 import { logoutAction } from "@/app/(auth)/actions";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { NotificationBell } from "@/components/notification-bell";
 
 const ALL_NAV: Array<{
   href: string;
@@ -42,6 +44,8 @@ const ALL_NAV: Array<{
   { ...ADMIN_NAV_ITEMS[20], icon: RotateCcw },
   { ...ADMIN_NAV_ITEMS[21], icon: Scale },
   { ...ADMIN_NAV_ITEMS[22], icon: Shield },
+  { ...ADMIN_NAV_ITEMS[23], icon: MessageSquare },
+  { ...ADMIN_NAV_ITEMS[24], icon: Video },
 ];
 
 type NavItem = { href: string; label: string; icon: React.ComponentType<{ className?: string }>; roles: readonly string[] | null };
@@ -54,7 +58,7 @@ function filterNav(staffRole: StaffRoleLike, isFounder: boolean): NavItem[] {
     if (staffRole === "ADMIN") return true;
     // null staffRole = unassigned STAFF — show only universal items
     if (staffRole === null) return item.roles === null;
-    if (item.roles === null) return true; // Academy, Dashboard shown to all
+    if (item.roles === null) return true; // Academy, Dashboard, Messages, Meetings shown to all
     return item.roles.includes(staffRole);
   }) as NavItem[];
 
@@ -87,7 +91,10 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           {/* Brand — company logo */}
           <div className="px-2 pb-4 border-b border-white/10 flex items-center justify-between">
             <img src="/brand/company-logo.jpg" alt="Muzuka Gilbert" className="h-10 w-auto object-contain" />
-            <ThemeToggle />
+            <div className="flex items-center gap-1">
+              <NotificationBell href="/admin/messages" />
+              <ThemeToggle />
+            </div>
           </div>
           <nav className="flex-1 space-y-1 overflow-y-auto">
             {navItems.map((item) => (
@@ -129,6 +136,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           <img src="/brand/company-logo.jpg" alt="Muzuka Gilbert" className="h-8 w-auto object-contain" />
         </div>
         <div className="flex items-center gap-2">
+          <NotificationBell href="/admin/messages" />
           <ThemeToggle />
           <div className="text-right">
             <p className="text-xs text-zinc-400 font-medium">{user?.name?.split(" ")[0]}</p>

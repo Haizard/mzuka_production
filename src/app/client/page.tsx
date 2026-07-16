@@ -2,12 +2,13 @@ import Link from "next/link";
 import {
   CalendarDays, GalleryHorizontalEnd, MessageCircle,
   Plus, ArrowRight, Clock, CheckCircle2, ShieldCheck,
-  LockKeyhole, Star,
+  LockKeyhole, Star, Video, Bot,
 } from "lucide-react";
 import { logoutAction } from "@/app/(auth)/actions";
 import { requireApprovedUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { SupportChat } from "@/components/support-chat";
+import { NotificationBell } from "@/components/notification-bell";
 
 export const dynamic = "force-dynamic";
 
@@ -50,16 +51,33 @@ export default async function ClientPage() {
             <h1 className="mt-2 text-3xl font-bold">Welcome, {user.name}</h1>
             <p className="mt-1 text-sm text-zinc-400">{user.email}</p>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
+            <NotificationBell href="/client/messages" />
+            <Link
+              href="/client/meetings"
+              className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-white/10 px-3 text-sm text-zinc-300 hover:bg-white/5 hover:text-white transition"
+              title="Meetings"
+            >
+              <Video className="h-4 w-4" />
+              <span className="hidden sm:inline">Meetings</span>
+            </Link>
+            <Link
+              href="/client/ai-support"
+              className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-white/10 px-3 text-sm text-zinc-300 hover:bg-white/5 hover:text-white transition"
+              title="AI Support"
+            >
+              <Bot className="h-4 w-4" />
+              <span className="hidden sm:inline">AI Help</span>
+            </Link>
             <Link
               href="/client/bookings/new"
-              className="inline-flex h-11 items-center gap-2 rounded-lg bg-[var(--gold)] px-4 text-sm font-semibold text-black hover:bg-yellow-400 transition"
+              className="inline-flex h-9 items-center gap-2 rounded-lg bg-[var(--gold)] px-4 text-sm font-semibold text-black hover:bg-yellow-400 transition"
             >
               <Plus className="h-4 w-4" />
-              Book Session
+              <span className="hidden sm:inline">Book Session</span>
             </Link>
             <form action={logoutAction}>
-              <button className="h-11 rounded-lg border border-white/10 px-4 text-sm text-zinc-300 hover:bg-white/5 transition">
+              <button className="h-9 rounded-lg border border-white/10 px-3 text-sm text-zinc-300 hover:bg-white/5 transition">
                 Sign out
               </button>
             </form>

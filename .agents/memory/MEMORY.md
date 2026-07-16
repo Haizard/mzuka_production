@@ -1,0 +1,2 @@
+- [Messaging/Meeting/AI features](dm-meeting-ai.md) — DirectConversation+DirectMessage+Meeting Prisma models added; Jitsi embed (no API key); role-aware AI at /api/ai/platform-support
+- [Prisma v7 push pattern](prisma-v7.md) — must run `pnpm prisma db push` then `pnpm prisma generate` from artifacts/mzuka-gilbert; config in prisma.config.ts not schema.prisma

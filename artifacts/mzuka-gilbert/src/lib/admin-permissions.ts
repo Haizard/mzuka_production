@@ -25,6 +25,8 @@ export const ADMIN_NAV_ITEMS = [
   { href: "/admin/equipment/returns",   label: "Returns",      roles: ["ADMIN", "PRODUCTION_MANAGER", "COORDINATOR", "DRIVER"] },
   { href: "/admin/legal",               label: "Legal",        roles: ["ADMIN"] },
   { href: "/admin/security",            label: "Security",     roles: ["ADMIN"] },
+  { href: "/admin/messages",            label: "Messages",     roles: null },
+  { href: "/admin/meetings",            label: "Meetings",     roles: null },
 ] as const;
 
 type AdminUser = NonNullable<Awaited<ReturnType<typeof getCurrentUser>>>;

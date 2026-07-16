@@ -2,8 +2,9 @@ import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth";
 import Link from "next/link";
 import { logoutAction } from "@/app/(auth)/actions";
-import { ListTodo, LogOut, Camera, Video, Scissors, Car, Users2 } from "lucide-react";
+import { ListTodo, LogOut, Camera, Video, Scissors, Car, Users2, MessageSquare, Bot } from "lucide-react";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { NotificationBell } from "@/components/notification-bell";
 
 const ROLE_META: Record<string, { label: string; icon: React.ElementType; colour: string }> = {
   PHOTOGRAPHER:  { label: "Photographer",  icon: Camera,   colour: "text-blue-400" },
@@ -46,8 +47,9 @@ export default async function StaffLayout({ children }: { children: React.ReactN
           </div>
 
           {/* Right side */}
-          <div className="flex items-center gap-2 sm:gap-3">
+          <div className="flex items-center gap-1.5 sm:gap-2">
             <ThemeToggle />
+            <NotificationBell href="/staff/messages" />
 
             {/* User name chip */}
             <div className="hidden sm:flex items-center gap-2">
@@ -57,9 +59,24 @@ export default async function StaffLayout({ children }: { children: React.ReactN
               <span className="text-xs text-zinc-400 max-w-[100px] truncate">{user.name.split(" ")[0]}</span>
             </div>
 
-            <Link href="/staff" className="flex items-center gap-1.5 text-sm text-zinc-400 hover:text-white transition">
+            <Link href="/staff" className="flex items-center gap-1.5 text-sm text-zinc-400 hover:text-white transition px-2 py-1 rounded-lg hover:bg-white/5">
               <ListTodo className="h-4 w-4" />
-              <span className="hidden sm:inline">My Tasks</span>
+              <span className="hidden sm:inline">Tasks</span>
+            </Link>
+
+            <Link href="/staff/messages" className="flex items-center gap-1.5 text-sm text-zinc-400 hover:text-white transition px-2 py-1 rounded-lg hover:bg-white/5">
+              <MessageSquare className="h-4 w-4" />
+              <span className="hidden sm:inline">Messages</span>
+            </Link>
+
+            <Link href="/staff/meetings" className="flex items-center gap-1.5 text-sm text-zinc-400 hover:text-white transition px-2 py-1 rounded-lg hover:bg-white/5">
+              <Video className="h-4 w-4" />
+              <span className="hidden sm:inline">Meetings</span>
+            </Link>
+
+            <Link href="/staff/ai-support" className="flex items-center gap-1.5 text-sm text-zinc-400 hover:text-white transition px-2 py-1 rounded-lg hover:bg-white/5">
+              <Bot className="h-4 w-4" />
+              <span className="hidden sm:inline">AI</span>
             </Link>
 
             {["FOUNDER","ADMIN"].includes(user.role) && (

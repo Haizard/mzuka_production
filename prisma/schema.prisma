@@ -107,6 +107,10 @@ model User {
   equipmentReturnsRequested EquipmentReturn[] @relation("ReturnRequester")
   equipmentReturnsReviewed  EquipmentReturn[] @relation("ReturnReviewer")
   uploadedAssets  MediaAsset[]     @relation("UploadedByStaff")
+  adminConvos        DirectConversation[] @relation("AdminConvos")
+  participantConvos  DirectConversation[] @relation("ParticipantConvos")
+  sentDirectMessages DirectMessage[]      @relation("SentMessages")
+  createdMeetings    Meeting[]            @relation("MeetingCreator")
 }
 
 model ClientApproval {
@@ -598,4 +602,46 @@ model EquipmentReturn {
   assignment      EquipmentAssignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
   requestedBy     User                @relation("ReturnRequester", fields: [requestedById], references: [id])
   reviewedBy      User?               @relation("ReturnReviewer", fields: [reviewedById], references: [id])
+}
+
+// ── Direct Messaging ──────────────────────────────────────────────────────────
+
+model DirectConversation {
+  id            String          @id @default(cuid())
+  adminId       String
+  participantId String
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+  admin         User            @relation("AdminConvos", fields: [adminId], references: [id])
+  participant   User            @relation("ParticipantConvos", fields: [participantId], references: [id])
+  messages      DirectMessage[]
+
+  @@unique([adminId, participantId])
+}
+
+model DirectMessage {
+  id             String             @id @default(cuid())
+  conversationId String
+  senderId       String
+  body           String
+  readAt         DateTime?
+  createdAt      DateTime           @default(now())
+  conversation   DirectConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  sender         User               @relation("SentMessages", fields: [senderId], references: [id])
+}
+
+// ── Meetings ──────────────────────────────────────────────────────────────────
+
+model Meeting {
+  id           String    @id @default(cuid())
+  title        String
+  description  String?
+  roomId       String    @unique
+  scheduledAt  DateTime
+  endsAt       DateTime?
+  createdById  String
+  isActive     Boolean   @default(true)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  createdBy    User      @relation("MeetingCreator", fields: [createdById], references: [id])
 }
