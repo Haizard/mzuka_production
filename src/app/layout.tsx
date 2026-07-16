@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import Script from "next/script";
 import "./globals.css";
 import PwaInstallButton from "../components/pwa-install-button";
+import { ThemeProvider } from "@/components/theme-provider";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -59,6 +60,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
+      suppressHydrationWarning
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <head>
@@ -77,8 +79,10 @@ export default function RootLayout({
         <link rel="apple-touch-icon" href="/brand/mg-logo-apple-touch-icon.png" />
       </head>
       <body className="min-h-full flex flex-col">
-        {children}
-        <PwaInstallButton />
+        <ThemeProvider attribute="data-theme" defaultTheme="dark" enableSystem={false}>
+          {children}
+          <PwaInstallButton />
+        </ThemeProvider>
         <Script id="register-sw" strategy="afterInteractive">
           {`
             if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {

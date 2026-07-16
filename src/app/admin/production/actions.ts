@@ -227,7 +227,7 @@ export async function getStaffMembers() {
     await requireProductionAccess();
     const staff = await prisma.user.findMany({
       where: { role: { in: ["FOUNDER", "ADMIN", "STAFF"] }, approvalStatus: "APPROVED" },
-      select: { id: true, name: true, email: true, role: true },
+      select: { id: true, name: true, email: true, role: true, staffRole: true },
       orderBy: { name: "asc" },
     });
     return { success: true, staff };

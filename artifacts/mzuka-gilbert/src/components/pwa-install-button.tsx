@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import PwaInstallModal from "./pwa-install-modal";
+import { Download } from "lucide-react";
 
 export default function PwaInstallButton() {
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
@@ -22,11 +23,8 @@ export default function PwaInstallButton() {
       setVisible(false);
     }
 
-    // Detect display-mode standalone (installed)
     const checkInstalled = () => {
-      // @ts-ignore
       const standalone = window.matchMedia && window.matchMedia('(display-mode: standalone)').matches;
-      // @ts-ignore (iOS)
       const iOSStandalone = (window.navigator as any).standalone === true;
       setIsInstalled(Boolean(standalone || iOSStandalone));
     };
@@ -45,46 +43,27 @@ export default function PwaInstallButton() {
 
   const sendAnalytics = (action: string) => {
     try {
-      // Prefer gtag if available
       // @ts-ignore
-      if (typeof window.gtag === 'function') {
-        // @ts-ignore
-        window.gtag('event', 'pwa_' + action, { event_category: 'pwa', event_label: 'install_button' });
-        return;
-      }
-      // fallback to dataLayer
+      if (typeof window.gtag === 'function') { window.gtag('event', 'pwa_' + action, { event_category: 'pwa' }); return; }
       // @ts-ignore
-      if (Array.isArray(window.dataLayer)) {
-        // @ts-ignore
-        window.dataLayer.push({ event: 'pwa_' + action, category: 'pwa' });
-        return;
-      }
-    } catch (e) {}
-    // final fallback
-    // eslint-disable-next-line no-console
+      if (Array.isArray(window.dataLayer)) { window.dataLayer.push({ event: 'pwa_' + action }); return; }
+    } catch {}
     console.log('[pwa] analytics', action);
   };
 
   const handleInstallClick = async () => {
     if (deferredPrompt) {
       try {
-        // @ts-ignore
         deferredPrompt.prompt();
-        // @ts-ignore
         const choiceResult = await deferredPrompt.userChoice;
-        if (choiceResult && choiceResult.outcome === 'accepted') {
-          sendAnalytics('accepted');
-        } else {
-          sendAnalytics('dismissed');
-        }
+        sendAnalytics(choiceResult?.outcome === 'accepted' ? 'accepted' : 'dismissed');
         setVisible(false);
         setDeferredPrompt(null);
-      } catch (e) {
+      } catch {
         sendAnalytics('error');
         setVisible(false);
       }
     } else {
-      // Show our modal with platform instructions
       setModalOpen(true);
       sendAnalytics('manual_instructions_shown');
     }
@@ -94,32 +73,40 @@ export default function PwaInstallButton() {
 
   return (
     <>
+      {/* ── Fixed top-right install pill ─────────────────────────────────── */}
       <div
         style={{
           position: "fixed",
+          top: 16,
           right: 16,
-          bottom: 20,
-          zIndex: 9999,
-          display: "flex",
-          alignItems: "center",
+          zIndex: 10000,
         }}
       >
         <button
           aria-label="Install app"
           onClick={handleInstallClick}
-          title="Install app"
+          title="Install Muzuka Gilbert app"
           style={{
-            background: "#d4af37",
-            color: "#050505",
-            border: "none",
-            padding: "10px 14px",
+            display: "flex",
+            alignItems: "center",
+            gap: 6,
+            background: "rgba(10,10,10,0.85)",
+            color: "#d4af37",
+            border: "1px solid rgba(212,175,55,0.35)",
+            padding: "7px 14px",
             borderRadius: 9999,
-            boxShadow: "0 6px 18px rgba(0,0,0,0.12)",
+            backdropFilter: "blur(12px)",
+            WebkitBackdropFilter: "blur(12px)",
+            boxShadow: "0 2px 12px rgba(0,0,0,0.4)",
             cursor: "pointer",
             fontWeight: 600,
+            fontSize: 13,
+            letterSpacing: "0.02em",
+            transition: "all 0.2s",
           }}
         >
-          Install
+          <Download size={14} />
+          Install App
         </button>
       </div>
       <PwaInstallModal open={modalOpen} onClose={() => setModalOpen(false)} />

@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { AuthCard } from "@/components/auth-card";
 import { LoginForm } from "@/components/login-form";
 import { getCurrentUser } from "@/lib/auth";
+import { SupportChat } from "@/components/support-chat";
 
 export default async function LoginPage({
   searchParams,
@@ -22,21 +23,24 @@ export default async function LoginPage({
   const googleError = params.error;
 
   return (
-    <AuthCard
-      footerHref="/register"
-      footerLabel="Request access"
-      footerText="No private account yet?"
-      subtitle="Sign in to manage bookings, protected galleries, payments, and final delivery."
-      title="Sign in"
-    >
-      {googleError && (
-        <p className="mb-4 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-200">
-          {googleError === "google_cancelled"
-            ? "Google sign-in was cancelled. Try again."
-            : "Google sign-in failed. Please try again or use email."}
-        </p>
-      )}
-      <LoginForm />
-    </AuthCard>
+    <>
+      <AuthCard
+        footerHref="/register"
+        footerLabel="Request access"
+        footerText="No private account yet?"
+        subtitle="Sign in to manage bookings, protected galleries, payments, and final delivery."
+        title="Sign in"
+      >
+        {googleError && (
+          <p className="mb-4 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-200">
+            {googleError === "google_cancelled"
+              ? "Google sign-in was cancelled. Try again."
+              : "Google sign-in failed. Please try again or use email."}
+          </p>
+        )}
+        <LoginForm />
+      </AuthCard>
+      <SupportChat />
+    </>
   );
 }

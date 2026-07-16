@@ -1,6 +1,7 @@
 import Link from "next/link";
-import { ArrowLeft, Calendar, MapPin, DollarSign, FileText, AlertCircle, CheckCircle } from "lucide-react";
+import { ArrowLeft, Calendar, MapPin, DollarSign, FileText, AlertCircle, CheckCircle, Printer } from "lucide-react";
 import { getBookingById } from "@/app/client/actions";
+import { ReceiptBtn } from "@/components/receipt-btn";
 
 export const dynamic = "force-dynamic";
 
@@ -204,9 +205,15 @@ export default async function BookingDetailPage({
                 <div className="border-t border-white/10 pt-3 mt-3">
                   <p className="text-xs text-zinc-500 uppercase mb-2">Payments</p>
                   {booking.payments.map((payment) => (
-                    <div key={payment.id} className="flex justify-between text-xs mb-2">
-                      <span className="text-zinc-400 capitalize">{payment.status.toLowerCase()}</span>
-                      <span className="text-white">${(payment.amountCents / 100).toFixed(2)}</span>
+                    <div key={payment.id} className="mb-3">
+                      <div className="flex justify-between items-center text-xs mb-1">
+                        <span className="text-zinc-400 capitalize">{payment.status.toLowerCase().replace("_", " ")}</span>
+                        <span className="text-white font-semibold">${(payment.amountCents / 100).toFixed(2)}</span>
+                      </div>
+                      {/* Receipt buttons — only for paid payments */}
+                      {["PAID", "DEPOSIT_PAID"].includes(payment.status) && (
+                        <ReceiptBtn paymentId={payment.id} label="View Receipt" />
+                      )}
                     </div>
                   ))}
                 </div>

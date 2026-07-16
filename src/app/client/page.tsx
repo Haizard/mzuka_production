@@ -7,6 +7,7 @@ import {
 import { logoutAction } from "@/app/(auth)/actions";
 import { requireApprovedUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { SupportChat } from "@/components/support-chat";
 
 export const dynamic = "force-dynamic";
 
@@ -279,6 +280,7 @@ export default async function ClientPage() {
           </div>
         </div>
       </div>
+      <SupportChat />
     </main>
   );
 }

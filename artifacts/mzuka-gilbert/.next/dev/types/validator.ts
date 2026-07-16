@@ -478,6 +478,15 @@ type RouteHandlerConfig<Route extends AppRouteHandlerRoutes = AppRouteHandlerRou
   type __Unused = __Check
 }
 
+// Validate ../../../src/app/api/chat/support/route.ts
+{
+  type __IsExpected<Specific extends RouteHandlerConfig<"/api/chat/support">> = Specific
+  const handler = {} as typeof import("../../../src/app/api/chat/support/route.js")
+  type __Check = __IsExpected<typeof handler>
+  // @ts-ignore
+  type __Unused = __Check
+}
+
 // Validate ../../../src/app/api/cron/process-reminders/route.ts
 {
   type __IsExpected<Specific extends RouteHandlerConfig<"/api/cron/process-reminders">> = Specific
@@ -518,6 +527,15 @@ type RouteHandlerConfig<Route extends AppRouteHandlerRoutes = AppRouteHandlerRou
 {
   type __IsExpected<Specific extends RouteHandlerConfig<"/api/media/upload">> = Specific
   const handler = {} as typeof import("../../../src/app/api/media/upload/route.js")
+  type __Check = __IsExpected<typeof handler>
+  // @ts-ignore
+  type __Unused = __Check
+}
+
+// Validate ../../../src/app/api/receipt/[paymentId]/route.ts
+{
+  type __IsExpected<Specific extends RouteHandlerConfig<"/api/receipt/[paymentId]">> = Specific
+  const handler = {} as typeof import("../../../src/app/api/receipt/[paymentId]/route.js")
   type __Check = __IsExpected<typeof handler>
   // @ts-ignore
   type __Unused = __Check

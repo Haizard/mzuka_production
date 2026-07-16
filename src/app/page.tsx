@@ -1,10 +1,12 @@
 import Image from "next/image";
 import Link from "next/link";
 import {
-  Crown, Camera, ShieldCheck, Download, Star,
-  CalendarDays, CheckCircle2, ArrowRight, Play,
+  Camera, ShieldCheck, Download,
+  Star, CalendarDays, CheckCircle2, ArrowRight, Play,
   Mail, Phone, MapPin, Globe, Share2, GalleryHorizontalEnd,
 } from "lucide-react";
+import { ThemeToggle } from "@/components/theme-toggle";
+import { SupportChat } from "@/components/support-chat";
 
 export default function Home() {
   return (
@@ -21,6 +23,7 @@ export default function Home() {
       <CTA />
       <div className="hidden lg:block"><Footer /></div>
       <MobileHomeBottomBar />
+      <SupportChat />
     </main>
   );
 }
@@ -33,13 +36,7 @@ function Nav() {
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
         {/* Brand */}
         <Link href="/" className="flex items-center gap-3">
-          <div className="grid h-10 w-10 place-items-center rounded-xl lg:rounded-lg border border-[var(--gold)]/40 bg-black text-[var(--gold)]">
-            <Crown className="h-5 w-5" />
-          </div>
-          <div className="leading-none">
-            <p className="text-base font-bold tracking-widest text-[var(--gold)]">[MG]</p>
-            <p className="text-[10px] uppercase tracking-[0.2em] text-zinc-400">Muzuka Gilbert</p>
-          </div>
+          <img src="/brand/company-logo.jpg" alt="Muzuka Gilbert" className="h-10 w-auto object-contain" />
         </Link>
 
         {/* Desktop nav */}
@@ -54,6 +51,7 @@ function Nav() {
 
         {/* Actions */}
         <div className="flex items-center gap-3">
+          <ThemeToggle />
           <Link href="/login" className="hidden sm:inline-flex h-10 items-center px-4 text-sm text-zinc-300 hover:text-white transition border border-white/10 rounded-lg hover:border-white/20">
             Sign In
           </Link>
@@ -102,73 +100,80 @@ function MobileHomeBottomBar() {
 
 function Hero() {
   return (
-    <section className="relative min-h-dvh flex items-center justify-center overflow-hidden pt-16">
-      {/* Background image */}
+    <section className="relative min-h-dvh flex items-end justify-center overflow-hidden pt-16">
+      {/* Full-bleed background */}
       <Image
         src="/brand/muzuka-primary-concept.jpeg"
         alt="Muzuka Gilbert luxury photography"
         fill
         priority
-        className="object-cover object-center"
+        className="object-cover object-center scale-105"
+        style={{ transform: "scale(1.05)" }}
       />
-      {/* Overlays */}
-      <div className="absolute inset-0 bg-gradient-to-b from-black/70 via-black/60 to-[var(--background)]" />
-      <div className="absolute inset-0 bg-gradient-to-r from-black/50 via-transparent to-transparent" />
 
-      {/* Gold accent line */}
-      <div className="absolute left-0 top-0 h-full w-px bg-gradient-to-b from-transparent via-[var(--gold)]/40 to-transparent" />
+      {/* Layered overlays — dark bottom fade for text readability */}
+      <div className="absolute inset-0 bg-gradient-to-t from-black via-black/50 to-black/20" />
+      <div className="absolute inset-0 bg-gradient-to-r from-black/60 via-transparent to-transparent" />
 
-      <div className="relative z-10 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-20">
-        <div className="max-w-4xl">
-          {/* Eyebrow */}
-          <div className="inline-flex items-center gap-2 rounded-full border border-[var(--gold)]/30 bg-black/50 px-4 py-2 mb-8 backdrop-blur">
-            <Star className="h-3.5 w-3.5 text-[var(--gold)] fill-[var(--gold)]" />
-            <span className="text-xs uppercase tracking-[0.2em] text-[var(--gold)]">Luxury Photography &amp; Videography</span>
+      {/* Thin gold left accent line */}
+      <div className="absolute left-0 top-0 h-full w-[2px] bg-gradient-to-b from-transparent via-[var(--gold)]/60 to-transparent" />
+
+      {/* Content — pinned to bottom with generous padding */}
+      <div className="relative z-10 w-full mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 pb-20 lg:pb-28">
+        <div className="max-w-2xl">
+
+          {/* Eyebrow pill */}
+          <div className="inline-flex items-center gap-2 rounded-full border border-[var(--gold)]/30 bg-black/40 px-4 py-1.5 mb-6 backdrop-blur-sm">
+            <span className="w-1.5 h-1.5 rounded-full bg-[var(--gold)] animate-pulse" />
+            <span className="text-xs uppercase tracking-[0.25em] text-[var(--gold)]">Luxury Photography &amp; Videography</span>
           </div>
 
-          {/* Headline */}
-          <h1 className="text-5xl sm:text-6xl lg:text-8xl font-bold leading-[1.0] tracking-tight mb-6">
-            <span className="block text-white">We don&apos;t just</span>
-            <span className="block text-white">take pictures.</span>
-            <span className="block text-[var(--gold)]">We create</span>
-            <span className="block text-[var(--gold)]">masterpieces.</span>
+          {/* Headline — refined, not screaming */}
+          <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold leading-[1.08] tracking-tight mb-5 text-white">
+            Moments that live<br />
+            <span className="text-[var(--gold)]">forever.</span>
           </h1>
 
-          <p className="text-lg sm:text-xl text-zinc-300 max-w-2xl leading-relaxed mb-10">
-            Private booking. Protected gallery delivery. Cinematic quality. Every image scored by AI before it reaches you — only the best makes the cut.
+          <p className="text-base sm:text-lg text-zinc-300/90 max-w-lg leading-relaxed mb-8">
+            Private booking. AI-scored quality. Protected gallery delivery. Only your best images make the cut.
           </p>
 
           {/* CTAs */}
-          <div className="flex flex-col sm:flex-row gap-4">
+          <div className="flex flex-col sm:flex-row gap-3">
             <Link href="/register"
-              className="inline-flex h-14 items-center justify-center gap-3 rounded-xl bg-[var(--gold)] px-8 text-base font-bold text-black hover:bg-yellow-400 transition group">
-              <CalendarDays className="h-5 w-5" />
-              Book Your Session
-              <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
+              className="inline-flex h-12 items-center justify-center gap-2.5 rounded-xl bg-[var(--gold)] px-7 text-sm font-bold text-black hover:bg-yellow-400 transition-all group">
+              <CalendarDays className="h-4 w-4" />
+              Book a Session
+              <ArrowRight className="h-3.5 w-3.5 group-hover:translate-x-0.5 transition-transform" />
             </Link>
             <a href="#gallery"
-              className="inline-flex h-14 items-center justify-center gap-3 rounded-xl border border-white/20 bg-white/5 px-8 text-base font-medium text-white hover:bg-white/10 hover:border-white/30 transition backdrop-blur">
-              <Play className="h-5 w-5 text-[var(--gold)]" />
+              className="inline-flex h-12 items-center justify-center gap-2.5 rounded-xl border border-white/15 bg-white/5 px-7 text-sm font-medium text-white hover:bg-white/10 transition-all backdrop-blur">
+              <Play className="h-4 w-4 text-[var(--gold)]" />
               View Our Work
             </a>
           </div>
 
-          {/* Stats */}
-          <div className="mt-14 flex flex-wrap gap-x-10 gap-y-4">
-            {[["500+", "Sessions Delivered"], ["98%", "Client Satisfaction"], ["6K/8K", "Full Resolution"], ["100%", "Private & Secure"]].map(([num, label]) => (
-              <div key={label as string}>
-                <p className="text-3xl font-bold text-[var(--gold)]">{num as string}</p>
-                <p className="text-sm text-zinc-400 mt-0.5">{label as string}</p>
+          {/* Compact stats row */}
+          <div className="mt-10 flex flex-wrap gap-x-8 gap-y-3">
+            {[
+              ["500+", "Sessions"],
+              ["98%",  "Satisfaction"],
+              ["6K/8K", "Resolution"],
+              ["100%",  "Private"],
+            ].map(([num, label]) => (
+              <div key={label as string} className="flex items-baseline gap-1.5">
+                <span className="text-xl font-bold text-[var(--gold)]">{num as string}</span>
+                <span className="text-xs text-zinc-500 uppercase tracking-wider">{label as string}</span>
               </div>
             ))}
           </div>
         </div>
       </div>
 
-      {/* Scroll indicator */}
-      <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 animate-bounce">
-        <div className="w-px h-8 bg-gradient-to-b from-[var(--gold)]/60 to-transparent" />
-        <div className="w-1.5 h-1.5 rounded-full bg-[var(--gold)]/60" />
+      {/* Scroll cue */}
+      <div className="absolute bottom-6 right-6 lg:bottom-10 lg:right-10 flex flex-col items-center gap-1.5 opacity-50">
+        <div className="h-10 w-px bg-gradient-to-b from-[var(--gold)] to-transparent" />
+        <div className="w-1 h-1 rounded-full bg-[var(--gold)]" />
       </div>
     </section>
   );
@@ -663,13 +668,7 @@ function Footer() {
           {/* Brand */}
           <div className="md:col-span-1">
             <div className="flex items-center gap-3 mb-5">
-              <div className="grid h-10 w-10 place-items-center rounded-lg border border-[var(--gold)]/40 bg-black text-[var(--gold)]">
-                <Crown className="h-5 w-5" />
-              </div>
-              <div>
-                <p className="text-base font-bold tracking-widest text-[var(--gold)]">[MG]</p>
-                <p className="text-[10px] uppercase tracking-[0.2em] text-zinc-500">Muzuka Gilbert</p>
-              </div>
+              <img src="/brand/company-logo.jpg" alt="Muzuka Gilbert" className="h-10 w-auto object-contain" />
             </div>
             <p className="text-sm text-zinc-500 leading-relaxed mb-5">
               Luxury photography & videography. We don&apos;t just take pictures — we create masterpieces.

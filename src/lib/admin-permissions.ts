@@ -64,7 +64,12 @@ export async function requireAdminAccess(pathname: AdminPath | string) {
   const user = await requireAdmin();
 
   if (!canAccessAdminPath(user, pathname)) {
-    redirect(user.role === "STAFF" ? "/staff" : "/admin");
+    // Admin-side staff roles belong in /admin, field staff in /staff
+    const adminStaffRoles = ["ADMIN","PRODUCTION_MANAGER","COORDINATOR","HUMAN_RESOURCE"];
+    const dest = (user.role === "STAFF" && user.staffRole && adminStaffRoles.includes(user.staffRole))
+      ? "/admin"
+      : user.role === "STAFF" ? "/staff" : "/admin";
+    redirect(dest);
   }
 
   return user;
@@ -75,7 +80,11 @@ export async function requireAnyAdminAccess(pathnames: Array<AdminPath | string>
   const user = await requireAdmin();
 
   if (!pathnames.some((pathname) => canAccessAdminPath(user, pathname))) {
-    redirect(user.role === "STAFF" ? "/staff" : "/admin");
+    const adminStaffRoles = ["ADMIN","PRODUCTION_MANAGER","COORDINATOR","HUMAN_RESOURCE"];
+    const dest = (user.role === "STAFF" && user.staffRole && adminStaffRoles.includes(user.staffRole))
+      ? "/admin"
+      : user.role === "STAFF" ? "/staff" : "/admin";
+    redirect(dest);
   }
 
   return user;

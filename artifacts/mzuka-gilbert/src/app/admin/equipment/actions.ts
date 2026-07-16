@@ -432,8 +432,36 @@ export async function reviewReturnRequestAction(
   }
 }
 
-// ── Staff task dashboard ──────────────────────────────────────────────────────
+// ── All open tasks (for PM equipment assignment from inventory) ───────────────
 
+export async function getOpenTasksAction() {
+  try {
+    await requireProductionManager();
+    const tasks = await prisma.projectTask.findMany({
+      where: { status: { not: "DONE" }, assigneeId: { not: null } },
+      include: {
+        assignee: { select: { id: true, name: true, staffRole: true } },
+        project: {
+          include: {
+            booking: { select: { title: true, serviceType: true } },
+          },
+        },
+        equipmentAssignments: {
+          where: { returnedAt: null },
+          include: { item: { select: { id: true, name: true } } },
+        },
+      },
+      orderBy: { createdAt: "desc" },
+      take: 100,
+    });
+    return { success: true, tasks };
+  } catch (error) {
+    console.error("getOpenTasks:", error);
+    return { success: false, error: "Failed to load tasks", tasks: [] };
+  }
+}
+
+// ── Staff task dashboard ──────────────────────────────────────────────────────
 export async function getMyTasksAction() {
   try {
     const user = await requireStaff();

@@ -1,15 +1,33 @@
 @import "tailwindcss";
 
-:root {
+/* ── Dark theme (default) ───────────────────────────────────────────── */
+:root,
+[data-theme="dark"] {
   --background: #050505;
   --foreground: #fafafa;
   --surface: #111111;
   --surface-strong: #17120d;
+  --border: rgba(255,255,255,0.10);
   --gold: #d4af37;
   --gold-dark: #8c6a00;
   --deep-red: #4a0f18;
   --muted: #8a8a8a;
   --mobile-nav-height: 64px;
+  color-scheme: dark;
+}
+
+/* ── Light theme ────────────────────────────────────────────────────── */
+[data-theme="light"] {
+  --background: #f5f3ee;
+  --foreground: #111111;
+  --surface: #ffffff;
+  --surface-strong: #f0ece3;
+  --border: rgba(0,0,0,0.10);
+  --gold: #b8860b;
+  --gold-dark: #7a5800;
+  --deep-red: #8b1a2a;
+  --muted: #666666;
+  color-scheme: light;
 }
 
 @theme inline {
@@ -23,6 +41,7 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
+  transition: background 0.2s ease, color 0.2s ease;
 }
 
 button,
@@ -35,9 +54,18 @@ select {
   color-scheme: dark;
 }
 
+[data-theme="light"] select {
+  color-scheme: light;
+}
+
 select option {
   background-color: #1a1a1a;
   color: #f4f4f5;
+}
+
+[data-theme="light"] select option {
+  background-color: #ffffff;
+  color: #111111;
 }
 
 select option:hover,
@@ -45,6 +73,13 @@ select option:focus,
 select option:checked {
   background-color: #2a2a2a;
   color: #ffffff;
+}
+
+[data-theme="light"] select option:hover,
+[data-theme="light"] select option:focus,
+[data-theme="light"] select option:checked {
+  background-color: #f0ece3;
+  color: #111111;
 }
 
 ::selection {

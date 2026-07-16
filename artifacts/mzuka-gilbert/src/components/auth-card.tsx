@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { Crown } from "lucide-react";
 
 export function AuthCard({
   children,
@@ -17,7 +16,7 @@ export function AuthCard({
   title: string;
 }>) {
   return (
-    <main className="grid min-h-dvh place-items-center bg-[var(--background)] px-4 py-10 text-white relative overflow-hidden">
+    <main className="grid min-h-dvh place-items-center bg-[var(--background)] px-4 py-10 text-[var(--foreground)] relative overflow-hidden">
 
       {/* Mobile: decorative gold glow behind card */}
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-80 h-80 rounded-full bg-[var(--gold)]/5 blur-3xl pointer-events-none lg:hidden" />
@@ -27,17 +26,13 @@ export function AuthCard({
         {/* ── iOS/Android-style card ── */}
         <div className="rounded-3xl lg:rounded-lg border border-white/10 bg-[var(--surface)] p-7 lg:p-6 shadow-2xl shadow-black/50">
 
-          {/* Brand header */}
+          {/* Brand header — company logo */}
           <div className="flex items-center gap-3 mb-8 lg:mb-0">
-            <div className="grid h-12 w-12 lg:h-11 lg:w-11 place-items-center rounded-2xl lg:rounded-lg border border-[var(--gold)]/40 bg-black text-[var(--gold)]">
-              <Crown className="h-6 w-6 lg:h-5 lg:w-5" />
-            </div>
-            <div>
-              <p className="text-lg font-semibold leading-none">[MG]</p>
-              <p className="mt-1 text-xs uppercase tracking-[0.2em] text-[var(--gold)]">
-                Muzuka Gilbert
-              </p>
-            </div>
+            <img
+              src="/brand/company-logo.jpg"
+              alt="Muzuka Gilbert"
+              className="h-12 lg:h-11 w-auto object-contain"
+            />
           </div>
 
           {/* Title block */}

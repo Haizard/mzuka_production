@@ -1,5 +1,5 @@
-const CACHE_NAME = "mzuka-shell-v1";
-const APP_SHELL = ["/", "/manifest.webmanifest", "/brand/icon-192.png", "/brand/icon-512.png"];
+const CACHE_NAME = "mzuka-shell-v2";
+const APP_SHELL = ["/", "/manifest.webmanifest", "/brand/mg-logo-192.png", "/brand/mg-logo-512.png", "/brand/icon-192.png", "/brand/icon-512.png"];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(

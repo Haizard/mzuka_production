@@ -3,9 +3,10 @@
 import { useCallback, useEffect, useState } from "react";
 import {
   DollarSign, TrendingUp, TrendingDown, Receipt, FileText,
-  RefreshCw, ArrowUpRight, ArrowDownRight, Wallet,
+  RefreshCw, ArrowUpRight, ArrowDownRight, Wallet, Printer,
 } from "lucide-react";
 import { getFinanceSummary } from "./actions";
+import { ReceiptBtn } from "@/components/receipt-btn";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -155,9 +156,12 @@ export default function FinancePage() {
                       <p className="text-sm font-medium text-white truncate">{p.booking?.title ?? "—"}</p>
                       <p className="text-xs text-zinc-500">{p.booking?.client?.name} · {fmt(p.updatedAt)}</p>
                     </div>
-                    <span className="text-sm font-semibold text-emerald-400 shrink-0 ml-4">
-                      {usd(p.amountCents)}
-                    </span>
+                    <div className="flex items-center gap-3 ml-4 shrink-0">
+                      <span className="text-sm font-semibold text-emerald-400">
+                        {usd(p.amountCents)}
+                      </span>
+                      <ReceiptBtn paymentId={p.id} variant="icon" />
+                    </div>
                   </div>
                 ))}
               </div>

@@ -35,7 +35,7 @@ interface Task { id: string; title: string; description: string | null; status: 
 interface Note { id: string; body: string; createdAt: Date; author: { id: string; name: string; role: string } }
 interface Assignment { id: string; role: string; staff: { id: string; name: string; email: string; role: string } }
 interface Comm { id: string; channel: string; subject: string; body: string; sentAt: Date | null; createdAt: Date; user: { id: string; name: string } }
-interface StaffMember { id: string; name: string; email: string; role: string }
+interface StaffMember { id: string; name: string; email: string; role: string; staffRole?: string | null }
 interface EquipItem { id: string; name: string; category: { name: string }; status: string }
 interface Project {
   id: string; stage: Stage; shootDate: Date | null; editDueDate: Date | null; deliveredAt: Date | null; notes: string | null;
@@ -325,7 +325,7 @@ export default function ProjectDetailPage() {
             <select value={newTask.assigneeId} onChange={(e) => setNewTask((p) => ({ ...p, assigneeId: e.target.value }))}
               className="rounded-lg bg-white/5 border border-white/10 px-3 py-2 text-sm text-white focus:outline-none">
               <option value="">Unassigned</option>
-              {staff.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+              {staff.map((s) => <option key={s.id} value={s.id}>{s.name}{s.staffRole ? ` (${s.staffRole.replace("_"," ")})` : ""}</option>)}
             </select>
             <input type="datetime-local" value={newTask.dueAt} onChange={(e) => setNewTask((p) => ({ ...p, dueAt: e.target.value }))}
               className="rounded-lg bg-white/5 border border-white/10 px-3 py-2 text-sm text-white focus:outline-none" />

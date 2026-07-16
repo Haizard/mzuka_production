@@ -5,6 +5,7 @@ import { prisma } from "@/lib/db";
 import { BookingReminders } from "@/components/booking-reminders";
 import { AdminBookingActions } from "./admin-booking-actions";
 import { BOOKING_PIPELINE } from "@/lib/booking-constants";
+import { ReceiptBtn } from "@/components/receipt-btn";
 
 export const dynamic = "force-dynamic";
 
@@ -251,6 +252,22 @@ export default async function AdminBookingDetailPage({ params }: AdminBookingDet
                   {booking.deliveryDeadline} delivery
                 </span>
               </div>
+              {/* Per-payment receipts */}
+              {booking.payments.filter((p) => ["PAID","DEPOSIT_PAID"].includes(p.status)).length > 0 && (
+                <div className="mt-3 pt-3 border-t border-white/10 space-y-2">
+                  <p className="text-xs text-zinc-500 uppercase tracking-wider">Receipts</p>
+                  {booking.payments
+                    .filter((p) => ["PAID","DEPOSIT_PAID"].includes(p.status))
+                    .map((p) => (
+                      <div key={p.id} className="flex items-center justify-between">
+                        <span className="text-xs text-zinc-400">
+                          ${(p.amountCents / 100).toFixed(2)} · {p.status.replace("_"," ")}
+                        </span>
+                        <ReceiptBtn paymentId={p.id} variant="icon" />
+                      </div>
+                    ))}
+                </div>
+              )}
             </div>
 
             {/* Gallery link */}
