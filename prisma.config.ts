@@ -1,14 +1,29 @@
 import "dotenv/config";
 import { defineConfig } from "prisma/config";
 
+function resolveDatabaseUrl() {
+  const candidates = [
+    process.env.DIRECT_URL,
+    process.env.DATABASE_URL,
+    process.env.POSTGRES_URL,
+    process.env.POSTGRES_PRISMA_URL,
+    process.env.SESSION_POOLER_URL,
+    process.env.SESSION_POOLER_CONNECTION_SKILL,
+    process.env.POSTGRES_URL_NON_POOLING,
+  ];
+
+  return candidates.find((value) => {
+    if (!value) return false;
+    return value.startsWith("postgresql://") || value.startsWith("postgres://");
+  });
+}
+
 export default defineConfig({
   schema: "prisma/schema.prisma",
   migrations: {
     path: "prisma/migrations",
   },
   datasource: {
-    // session_pooler_connection_skill is the Supabase session pooler URL (port 5432).
-    // Falls back to DATABASE_URL for local dev.
-    url: process.env.session_pooler_connection_skill ?? process.env.DATABASE_URL,
+    url: resolveDatabaseUrl(),
   },
 });
