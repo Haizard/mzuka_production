@@ -33,7 +33,6 @@
     "node_modules",
     "vitest.config.ts",
     "src/tests",
-    "artifacts",
     "lib",
     "scripts"
   ]
