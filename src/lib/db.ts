@@ -7,8 +7,8 @@ const globalForPrisma = globalThis as unknown as {
 
 export function resolveDatabaseUrl(env: Record<string, string | undefined> = process.env) {
   const candidates = [
-    env.DIRECT_URL,
     env.DATABASE_URL,
+    env.DIRECT_URL,
     env.POSTGRES_URL,
     env.POSTGRES_PRISMA_URL,
     env.SESSION_POOLER_URL,
@@ -18,6 +18,9 @@ export function resolveDatabaseUrl(env: Record<string, string | undefined> = pro
 
   const connectionString = candidates.find((value) => {
     if (!value) return false;
+    if (/[\s"'`]/.test(value)) {
+      return false;
+    }
     return value.startsWith("postgresql://") || value.startsWith("postgres://");
   });
 

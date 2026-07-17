@@ -3,8 +3,8 @@ import { defineConfig } from "prisma/config";
 
 function resolveDatabaseUrl() {
   const candidates = [
-    process.env.DIRECT_URL,
     process.env.DATABASE_URL,
+    process.env.DIRECT_URL,
     process.env.POSTGRES_URL,
     process.env.POSTGRES_PRISMA_URL,
     process.env.SESSION_POOLER_URL,
@@ -12,10 +12,15 @@ function resolveDatabaseUrl() {
     process.env.POSTGRES_URL_NON_POOLING,
   ];
 
-  return candidates.find((value) => {
+  const connectionString = candidates.find((value) => {
     if (!value) return false;
+    if (/[\s"'`]/.test(value)) {
+      return false;
+    }
     return value.startsWith("postgresql://") || value.startsWith("postgres://");
   });
+
+  return connectionString;
 }
 
 export default defineConfig({
