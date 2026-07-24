@@ -531,10 +531,9 @@ function Testimonials() {
           <h2 className="text-4xl sm:text-5xl font-bold text-white">What Our Clients Say</h2>
         </div>
 
-        <div className="grid gap-6 grid-cols-2 md:grid-cols-3">
+        <div className="-mx-4 px-4 flex gap-6 overflow-x-auto snap-x snap-mandatory md:grid md:grid-cols-3 md:gap-6">
           {testimonials.map((t) => (
-            <div key={t.name} className="rounded-2xl border border-white/10 bg-[var(--surface)] p-7 hover:border-[var(--gold)]/30 transition">
-              {/* Stars */}
+            <div key={t.name} className="snap-center flex-shrink-0 w-[66.666vw] md:w-auto rounded-2xl border border-white/10 bg-[var(--surface)] p-7 hover:border-[var(--gold)]/30 transition">
               <div className="flex gap-1 mb-5">
                 {Array.from({ length: t.rating }).map((_, i) => (
                   <Star key={i} className="h-4 w-4 text-[var(--gold)] fill-[var(--gold)]" />

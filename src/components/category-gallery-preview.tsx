@@ -46,20 +46,27 @@ export function CategoryGalleryPreview({ categories }: CategoryGalleryPreviewPro
           <div className="space-y-4 lg:w-[38%]">
             <div className="rounded-3xl border border-white/10 bg-black/40 p-6">
               <p className="text-sm uppercase tracking-[0.3em] text-[var(--gold)] mb-4">Popular categories</p>
-              <div className="grid gap-3">
-                {categories.map((category, index) => (
-                  <button
-                    key={category.name}
-                    type="button"
-                    onClick={() => setActiveIndex(index)}
-                    className={`w-full text-left rounded-2xl px-4 py-3 transition ${index === activeIndex ? "bg-white/10 border border-[var(--gold)]/20 text-white" : "bg-white/5 text-zinc-300 hover:bg-white/10"}`}
-                  >
-                    <div className="flex items-center justify-between gap-3">
-                      <span className="font-medium">{category.name}</span>
-                      <span className="text-xs uppercase tracking-[0.25em] text-zinc-400">{category.images.length} photos</span>
-                    </div>
-                  </button>
-                ))}
+              <div className="flex gap-3 overflow-x-auto py-1 px-1 lg:flex-col lg:overflow-visible">
+                <div className="-mx-6 px-6 lg:mx-0 lg:px-0">
+                  <div className="flex gap-3 overflow-x-auto lg:block">
+                    {categories.map((category, index) => {
+                      const active = index === activeIndex;
+                      return (
+                        <button
+                          key={category.name}
+                          type="button"
+                          onClick={() => setActiveIndex(index)}
+                          className={`rounded-2xl px-4 py-3 transition flex-shrink-0 ${isSmall ? 'min-w-[140px]' : 'w-full text-left'} ${active ? 'bg-white/10 border border-[var(--gold)]/20 text-white' : 'bg-white/5 text-zinc-300 hover:bg-white/10'}`}
+                        >
+                          <div className={`flex items-center justify-between gap-3 ${isSmall ? 'flex-col items-start gap-2' : ''}`}>
+                            <span className="font-medium">{category.name}</span>
+                            <span className="text-xs uppercase tracking-[0.25em] text-zinc-400">{category.images.length} photos</span>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
               </div>
             </div>
 
