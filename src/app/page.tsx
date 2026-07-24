@@ -587,48 +587,7 @@ function Pricing() {
               }`}>
               {plan.highlight && (
                 <div className="absolute -top-4 left-1/2 -translate-x-1/2">
-                  <span className="bg-[var(--gold)] text-black text-xs font-black px-4 py-1.5 rounded-full uppercase tracking-wider">
-                    Most Popular
-                  </span>
-                </div>
-              )}
-
-              <div className="mb-6">
-                <p className="text-sm text-zinc-500 uppercase tracking-widest mb-1">{plan.name}</p>
-                <p className="text-4xl font-black text-white mb-2">{plan.price}</p>
-                <p className="text-sm text-zinc-400">{plan.desc}</p>
-              </div>
-
-              <div className="space-y-3 flex-1 mb-8">
-                {plan.features.map((f) => (
-                  <div key={f} className="flex items-center gap-2.5">
-                    <CheckCircle2 className={`h-4 w-4 shrink-0 ${plan.highlight ? "text-[var(--gold)]" : "text-zinc-500"}`} />
-                    <span className="text-sm text-zinc-300">{f}</span>
-                  </div>
-                ))}
-              </div>
-
-              <Link href="/register"
-                className={`inline-flex h-12 items-center justify-center gap-2 rounded-xl text-sm font-bold transition ${
-                  plan.highlight
-                    ? "bg-[var(--gold)] text-black hover:bg-yellow-400"
-                    : "border border-white/20 text-white hover:bg-white/5"
-                }`}>
-                {plan.cta} <ArrowRight className="h-4 w-4" />
-              </Link>
-            </div>
-          ))}
-        </div>
-
-        <p className="text-center text-sm text-zinc-500 mt-8">
-          All prices are starting rates. Final quote based on event specifics.{" "}
-          <Link href="/register" className="text-[var(--gold)] hover:underline">Contact us for custom packages.</Link>
-        </p>
-      </div>
-    </section>
-  );
-}
-
+                  <PlansCarousel plans={plans} />
 // ── CTA Banner ────────────────────────────────────────────────────────────────
 
 function CTA() {
