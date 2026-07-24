@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Video, Plus, X, Calendar, Clock, Users, ExternalLink, Maximize2, Minimize2 } from "lucide-react";
+import { getJitsiIframeUrl, getJitsiRoomUrl } from "@/lib/jitsi";
 
 interface Meeting {
   id: string; title: string; description?: string; roomId: string;
@@ -153,7 +154,7 @@ export default function AdminMeetingsPage() {
                 {fullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
               </button>
               <a
-                href={`https://meet.jit.si/${activeMeeting.roomId}`}
+                href={getJitsiRoomUrl(activeMeeting.roomId)}
                 target="_blank"
                 rel="noreferrer"
                 className="p-1.5 rounded-lg hover:bg-white/10 text-zinc-400 hover:text-white transition"
@@ -170,7 +171,7 @@ export default function AdminMeetingsPage() {
             </div>
           </div>
           <iframe
-            src={`https://meet.jit.si/${activeMeeting.roomId}#config.startWithAudioMuted=false&config.prejoinPageEnabled=false&appData.localStorageContent=null`}
+            src={getJitsiIframeUrl(activeMeeting.roomId, "#config.startWithAudioMuted=false&config.prejoinPageEnabled=false&appData.localStorageContent=null")}
             allow="camera; microphone; fullscreen; display-capture; autoplay"
             className="w-full"
             style={{ height: fullscreen ? "calc(100% - 53px)" : "520px", border: "none" }}
