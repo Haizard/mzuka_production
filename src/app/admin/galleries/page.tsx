@@ -10,10 +10,9 @@ import {
   getAdminGalleries,
   releaseMediaAssetsAction,
   cleanupOrphanedAssetsAction,
-  // getTrailerUploadUrlAction,
-  // saveTrailerKeyAction,
+  getTrailerUploadUrlAction,
+  saveTrailerKeyAction,
 } from "./actions";
-import { prisma } from "@/lib/db";
 
 interface AiAnalysis {
   overallScore: number;
@@ -176,21 +175,31 @@ export default function AdminGalleriesPage() {
     e.target.value = "";
     if (!file) return;
 
-    // Trailer upload functionality not yet implemented
-    alert("Trailer upload feature coming soon.");
-    return;
-
-    /*
     setTrailerUploadingId(assetId);
     try {
-      const urlRes = await getTrailerUploadUrlAction(assetId, file.name, file.type);
+      const urlRes = await getTrailerUploadUrlAction(assetId, file.name, file.type, file.size);
       if (!urlRes.success || !urlRes.uploadUrl || !urlRes.trailerKey) {
         alert(urlRes.error ?? "Failed to prepare trailer upload");
         return;
       }
-      const s3Res = await fetch(urlRes.uploadUrl, { method: "PUT", body: file, headers: { "Content-Type": file.type } });
-      if (!s3Res.ok) { alert("Trailer upload to storage failed. Try again."); return; }
-      await saveTrailerKeyAction(assetId, urlRes.trailerKey);
+
+      const s3Res = await fetch(urlRes.uploadUrl, {
+        method: "PUT",
+        body: file,
+        headers: { "Content-Type": file.type },
+      });
+
+      if (!s3Res.ok) {
+        alert("Trailer upload to storage failed. Try again.");
+        return;
+      }
+
+      const saveResult = await saveTrailerKeyAction(assetId, urlRes.trailerKey);
+      if (!saveResult.success) {
+        alert(saveResult.error ?? "Failed to save trailer metadata");
+        return;
+      }
+
       await loadGalleries();
     } catch (err) {
       console.error("Trailer upload error:", err);
@@ -198,7 +207,6 @@ export default function AdminGalleriesPage() {
     } finally {
       setTrailerUploadingId(null);
     }
-    */
   };
 
   return (

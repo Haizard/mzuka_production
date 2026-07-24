@@ -199,6 +199,79 @@ export async function generatePreviewAction(mediaAssetId: string) {
   }
 }
 
+export async function getTrailerUploadUrlAction(
+  mediaAssetId: string,
+  filename: string,
+  filetype: string,
+  sizeBytes?: number
+) {
+  try {
+    await requireGalleriesAccess();
+
+    const asset = await prisma.mediaAsset.findUnique({
+      where: { id: mediaAssetId },
+      include: { gallery: { include: { booking: true } } },
+    });
+
+    if (!asset) return { success: false, error: "Media asset not found" };
+    if (asset.kind !== "VIDEO") {
+      return { success: false, error: "Trailer uploads are only supported for video assets" };
+    }
+
+    const uploadResult = await generateS3UploadUrl(
+      asset.gallery.bookingId,
+      filename,
+      filetype,
+      "edited",
+      sizeBytes
+    );
+
+    if (!uploadResult.success || !uploadResult.s3Key) {
+      return { success: false, error: uploadResult.error ?? "Failed to prepare trailer upload" };
+    }
+
+    return {
+      success: true,
+      uploadUrl: uploadResult.uploadUrl,
+      trailerKey: uploadResult.s3Key,
+    };
+  } catch (error) {
+    console.error("Failed to prepare trailer upload:", error);
+    return { success: false, error: "Failed to prepare trailer upload" };
+  }
+}
+
+export async function saveTrailerKeyAction(mediaAssetId: string, trailerKey: string) {
+  try {
+    await requireGalleriesAccess();
+
+    const asset = await prisma.mediaAsset.findUnique({ where: { id: mediaAssetId } });
+    if (!asset) return { success: false, error: "Media asset not found" };
+    if (asset.kind !== "VIDEO") {
+      return { success: false, error: "Trailer uploads are only supported for video assets" };
+    }
+
+    await prisma.mediaAsset.update({
+      where: { id: mediaAssetId },
+      data: { trailerKey },
+    });
+
+    await prisma.auditLog.create({
+      data: {
+        action: "MEDIA_UPLOADED",
+        entity: "MediaAsset",
+        entityId: mediaAssetId,
+        metadata: { trailerKey, kind: "VIDEO" },
+      },
+    });
+
+    return { success: true };
+  } catch (error) {
+    console.error("Failed to save trailer key:", error);
+    return { success: false, error: "Failed to save trailer" };
+  }
+}
+
 // ── AI photo quality scoring ──────────────────────────────────────────────────
 
 /**
