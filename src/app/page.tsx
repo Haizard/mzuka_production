@@ -4,6 +4,7 @@ import {
   Camera, ShieldCheck, Download,
   Star, CalendarDays, CheckCircle2, ArrowRight, Play,
   Mail, Phone, MapPin, Globe, Share2, GalleryHorizontalEnd,
+  Sparkles, Lock,
 } from "lucide-react";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { SupportChat } from "@/components/support-chat";
@@ -17,6 +18,7 @@ export default function Home() {
       <Services />
       <HowItWorks />
       <Gallery />
+      <NewFeatureSection />
       <AISection />
       <Testimonials />
       <Pricing />
@@ -130,8 +132,8 @@ function Hero() {
 
           {/* Headline — refined, not screaming */}
           <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold leading-[1.08] tracking-tight mb-5 text-white">
-            Moments that live<br />
-            <span className="text-[var(--gold)]">forever.</span>
+            Luxury stories,<br />
+            <span className="text-[var(--gold)]">captured beautifully.</span>
           </h1>
 
           <p className="text-base sm:text-lg text-zinc-300/90 max-w-lg leading-relaxed mb-8">
@@ -381,6 +383,79 @@ function Gallery() {
             className="shrink-0 inline-flex h-11 items-center gap-2 rounded-xl bg-[var(--gold)] px-6 text-sm font-bold text-black hover:bg-yellow-400 transition">
             Request Your Gallery <ArrowRight className="h-4 w-4" />
           </Link>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+// ── New Feature Section ────────────────────────────────────────────────────
+
+function NewFeatureSection() {
+  const features = [
+    {
+      title: "Private client galleries",
+      desc: "Beautifully branded galleries with secure sharing, preview-only access, and easy download controls.",
+      icon: ShieldCheck,
+    },
+    {
+      title: "AI-curated highlights",
+      desc: "The best images surface automatically so clients see the strongest work first, without the clutter.",
+      icon: Sparkles,
+    },
+    {
+      title: "Mobile-first delivery",
+      desc: "Your gallery feels premium on any screen, from phone browsing to desktop downloads.",
+      icon: Play,
+    },
+    {
+      title: "Protected sharing",
+      desc: "Watermarks, permissions, and secure links keep your work protected while still feeling effortless.",
+      icon: Lock,
+    },
+  ];
+
+  return (
+    <section className="py-24 px-4 sm:px-6 lg:px-8 bg-[var(--surface)]">
+      <div className="mx-auto max-w-7xl grid gap-10 lg:grid-cols-[1.05fr_0.95fr] items-center">
+        <div>
+          <p className="text-xs uppercase tracking-[0.3em] text-[var(--gold)] mb-3">New Feature</p>
+          <h2 className="text-4xl sm:text-5xl font-bold text-white leading-tight mb-5">
+            A smarter gallery experience for every session.
+          </h2>
+          <p className="text-zinc-400 text-lg leading-relaxed max-w-2xl">
+            The latest experience combines premium presentation, thoughtful permissions, and AI-assisted curation so your clients feel the luxury from the first click.
+          </p>
+
+          <div className="mt-8 grid gap-4 sm:grid-cols-2">
+            {features.map((feature) => {
+              const Icon = feature.icon;
+              return (
+                <div key={feature.title} className="rounded-2xl border border-white/10 bg-black/40 p-5">
+                  <div className="mb-3 inline-flex h-11 w-11 items-center justify-center rounded-xl bg-[var(--gold)]/10 border border-[var(--gold)]/20">
+                    <Icon className="h-5 w-5 text-[var(--gold)]" />
+                  </div>
+                  <h3 className="text-base font-semibold text-white mb-2">{feature.title}</h3>
+                  <p className="text-sm text-zinc-400 leading-relaxed">{feature.desc}</p>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        <div className="rounded-3xl border border-[var(--gold)]/20 bg-black p-4 sm:p-5 shadow-2xl shadow-[var(--gold)]/10">
+          <div className="overflow-hidden rounded-2xl relative aspect-[4/5]">
+            <Image src="/brand/mg-ai-dashboard-concept.jpeg" alt="Protected gallery experience" fill className="object-cover" />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
+            <div className="absolute inset-x-0 bottom-0 p-6">
+              <div className="inline-flex items-center gap-2 rounded-full border border-[var(--gold)]/30 bg-black/50 px-3 py-1.5 text-[11px] uppercase tracking-[0.25em] text-[var(--gold)] backdrop-blur">
+                <Sparkles className="h-3.5 w-3.5" />
+                Premium delivery experience
+              </div>
+              <h3 className="mt-4 text-xl font-semibold text-white">Protected. Elegant. Effortless.</h3>
+              <p className="mt-2 text-sm text-zinc-300">Your gallery experience now feels as refined as the final images themselves.</p>
+            </div>
+          </div>
         </div>
       </div>
     </section>
