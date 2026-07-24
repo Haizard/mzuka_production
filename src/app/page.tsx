@@ -12,6 +12,7 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import { SupportChat } from "@/components/support-chat";
 import { CategoryGalleryPreview } from "@/components/category-gallery-preview";
 import TestimonialsCarousel from "@/components/testimonials-carousel";
+import PlansCarousel from "@/components/plans-carousel";
 
 export default function Home() {
   return (
@@ -577,17 +578,12 @@ function Pricing() {
           <p className="mt-4 text-zinc-400 text-lg">Every package includes private gallery access and AI quality scoring.</p>
         </div>
 
-        <div className="grid gap-6 grid-cols-2 md:grid-cols-3">
-          {plans.map((plan) => (
-            <div key={plan.name}
-              className={`relative rounded-2xl p-8 flex flex-col transition-all duration-300 ${
-                plan.highlight
-                  ? "border-2 border-[var(--gold)] bg-gradient-to-b from-[var(--gold)]/10 to-black shadow-2xl shadow-[var(--gold)]/10 scale-[1.02]"
-                  : "border border-white/10 bg-black hover:border-white/20"
-              }`}>
-              {plan.highlight && (
-                <div className="absolute -top-4 left-1/2 -translate-x-1/2">
-                  <PlansCarousel plans={plans} />
+        <PlansCarousel plans={plans} />
+      </div>
+    </section>
+  );
+}
+
 // ── CTA Banner ────────────────────────────────────────────────────────────────
 
 function CTA() {

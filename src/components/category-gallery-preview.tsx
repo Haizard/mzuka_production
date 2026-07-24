@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import type { ReactNode } from "react";
 
 type CategoryImage = {
   filename: string;
@@ -148,13 +149,13 @@ export function CategoryGalleryPreview({ categories }: CategoryGalleryPreviewPro
   );
 }
 
-function LinkButton({ href }: { href: string }) {
+function LinkButton({ href, children }: { href: string; children?: ReactNode }) {
   return (
     <a
       href={href}
       className="inline-flex h-11 items-center justify-center rounded-xl border border-white/10 bg-white/5 px-5 text-sm font-semibold text-white hover:bg-white/10 transition"
     >
-      Explore gallery
+      {children ?? "Explore gallery"}
     </a>
   );
 }
