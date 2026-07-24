@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { publishDirectMessage } from "@/lib/realtime";
 
 export async function GET(_: Request, { params }: { params: Promise<{ id: string }> }) {
   const user = await getCurrentUser();
@@ -48,6 +49,10 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   await prisma.directConversation.update({
     where: { id },
     data: { updatedAt: new Date() },
+  });
+
+  publishDirectMessage(id, message).catch((error) => {
+    console.error("[realtime] failed to publish direct message", error);
   });
 
   return NextResponse.json({ message });

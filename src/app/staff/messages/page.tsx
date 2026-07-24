@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useRef, useCallback } from "react";
+import Pusher from "pusher-js";
 import { MessageSquare, Send, ChevronLeft } from "lucide-react";
 
 interface PUser { id: string; name: string; role: string; staffRole?: string | null; }
@@ -46,6 +47,23 @@ export default function StaffMessagesPage() {
     if (pollRef.current) clearInterval(pollRef.current);
     pollRef.current = setInterval(() => { loadMsgs(selected.id); loadConvos(); }, 5000);
     return () => { if (pollRef.current) clearInterval(pollRef.current); };
+  }, [selected, loadMsgs, loadConvos]);
+
+  useEffect(() => {
+    if (!selected || !process.env.NEXT_PUBLIC_PUSHER_KEY || !process.env.NEXT_PUBLIC_PUSHER_CLUSTER) return;
+    const pusher = new Pusher(process.env.NEXT_PUBLIC_PUSHER_KEY, {
+      cluster: process.env.NEXT_PUBLIC_PUSHER_CLUSTER,
+      authEndpoint: "/api/realtime/auth",
+    });
+    const channelName = `private-conversation-`;
+    const channel = pusher.subscribe(channelName);
+    const refresh = () => { loadMsgs(selected.id); loadConvos(); };
+    channel.bind("message:created", refresh);
+    return () => {
+      channel.unbind("message:created", refresh);
+      pusher.unsubscribe(channelName);
+      pusher.disconnect();
+    };
   }, [selected, loadMsgs, loadConvos]);
 
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: "smooth" }); }, [msgs]);
