@@ -11,6 +11,7 @@ import {
 import { ThemeToggle } from "@/components/theme-toggle";
 import { SupportChat } from "@/components/support-chat";
 import { CategoryGalleryPreview } from "@/components/category-gallery-preview";
+import TestimonialsCarousel from "@/components/testimonials-carousel";
 
 export default function Home() {
   return (
@@ -531,27 +532,7 @@ function Testimonials() {
           <h2 className="text-4xl sm:text-5xl font-bold text-white">What Our Clients Say</h2>
         </div>
 
-        <div className="-mx-4 px-4 flex gap-6 overflow-x-auto snap-x snap-mandatory md:grid md:grid-cols-3 md:gap-6">
-          {testimonials.map((t) => (
-            <div key={t.name} className="snap-center flex-shrink-0 w-[66.666vw] md:w-auto rounded-2xl border border-white/10 bg-[var(--surface)] p-7 hover:border-[var(--gold)]/30 transition">
-              <div className="flex gap-1 mb-5">
-                {Array.from({ length: t.rating }).map((_, i) => (
-                  <Star key={i} className="h-4 w-4 text-[var(--gold)] fill-[var(--gold)]" />
-                ))}
-              </div>
-              <p className="text-zinc-300 text-sm leading-relaxed mb-6 italic">&ldquo;{t.text}&rdquo;</p>
-              <div className="flex items-center gap-3 pt-4 border-t border-white/10">
-                <div className="w-10 h-10 rounded-full bg-[var(--gold)]/20 flex items-center justify-center text-[var(--gold)] font-bold text-sm shrink-0">
-                  {t.name.charAt(0)}
-                </div>
-                <div>
-                  <p className="text-white font-semibold text-sm">{t.name}</p>
-                  <p className="text-zinc-500 text-xs">{t.role}</p>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
+        <TestimonialsCarousel testimonials={testimonials} />
       </div>
     </section>
   );
