@@ -4,6 +4,11 @@ import { useEffect, useState } from "react";
 import { Video, Plus, X, Calendar, Clock, Users, ExternalLink, Maximize2, Minimize2 } from "lucide-react";
 import { getJitsiIframeUrl, getJitsiRoomUrl } from "@/lib/jitsi";
 
+function buildJitsiIframeUrl(roomId: string, jwt: string | null) {
+  const baseUrl = getJitsiIframeUrl(roomId, "#config.startWithAudioMuted=false&config.prejoinPageEnabled=false&appData.localStorageContent=null");
+  return jwt ? `${baseUrl}&jwt=${encodeURIComponent(jwt)}` : baseUrl;
+}
+
 interface Meeting {
   id: string; title: string; description?: string; roomId: string;
   scheduledAt: string; endsAt?: string; isActive: boolean;
@@ -22,6 +27,7 @@ export default function AdminMeetingsPage() {
   const [fullscreen, setFullscreen] = useState(false);
   const [form, setForm] = useState({ title: "", description: "", scheduledAt: "", endsAt: "" });
   const [creating, setCreating] = useState(false);
+  const [jitsiJwt, setJitsiJwt] = useState<string | null>(null);
 
   async function load() {
     const res = await fetch("/api/meetings");
@@ -30,6 +36,32 @@ export default function AdminMeetingsPage() {
   }
 
   useEffect(() => { load(); }, []);
+
+  useEffect(() => {
+    if (!activeMeeting) {
+      setJitsiJwt(null);
+      return;
+    }
+
+    let aborted = false;
+    fetch("/api/meetings/jwt", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ roomId: activeMeeting.roomId }),
+    })
+      .then(async (res) => {
+        if (!res.ok) return null;
+        const data = await res.json();
+        if (!aborted) setJitsiJwt(data.token ?? null);
+      })
+      .catch(() => {
+        if (!aborted) setJitsiJwt(null);
+      });
+
+    return () => {
+      aborted = true;
+    };
+  }, [activeMeeting]);
 
   async function create(e: React.FormEvent) {
     e.preventDefault();
@@ -171,7 +203,7 @@ export default function AdminMeetingsPage() {
             </div>
           </div>
           <iframe
-            src={getJitsiIframeUrl(activeMeeting.roomId, "#config.startWithAudioMuted=false&config.prejoinPageEnabled=false&appData.localStorageContent=null")}
+            src={buildJitsiIframeUrl(activeMeeting.roomId, jitsiJwt)}
             allow="camera; microphone; fullscreen; display-capture; autoplay"
             className="w-full"
             style={{ height: fullscreen ? "calc(100% - 53px)" : "520px", border: "none" }}
