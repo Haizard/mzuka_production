@@ -78,7 +78,7 @@ export default function RootLayout({
         <link rel="icon" href="/brand/mg-logo-512.png" sizes="512x512" />
         <link rel="apple-touch-icon" href="/brand/mg-logo-apple-touch-icon.png" />
       </head>
-      <body className="min-h-full flex flex-col">
+      <body className="min-h-full flex flex-col overflow-x-hidden">
         <ThemeProvider attribute="data-theme" defaultTheme="dark" enableSystem={false}>
           {children}
           <PwaInstallButton />
