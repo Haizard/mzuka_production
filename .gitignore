@@ -44,7 +44,10 @@ next-env.d.ts
 # Ignore loose screenshot PNGs/JPGs in the project root but NOT public assets
 *.png
 !public/**/*.png
+!src/images/**/*.png
 *.jpg
 !public/**/*.jpg
+!src/images/**/*.jpg
 *.jpeg
 !public/**/*.jpeg
+!src/images/**/*.jpeg
