@@ -142,6 +142,11 @@ export async function requireApprovedUser() {
 export async function requireAdmin() {
   const user = await requireApprovedUser();
 
+  if (user.approvalStatus === "DEACTIVATED") {
+    clearUserSession();
+    redirect("/login?error=account-deactivated");
+  }
+
   if (!["FOUNDER", "ADMIN", "STAFF"].includes(user.role)) {
     redirect("/client");
   }

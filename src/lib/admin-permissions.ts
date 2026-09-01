@@ -1,6 +1,27 @@
 import { redirect } from "next/navigation";
 import type { getCurrentUser } from "@/lib/auth";
 
+// ── Centralized role configuration ───────────────────────────────────────────
+// Single source of truth for all role-related constants.
+// Every file that previously hardcoded role lists should import from here.
+
+/** Roles that see the /admin panel (not /staff) */
+export const ADMIN_SIDE_ROLES = ["ADMIN", "PRODUCTION_MANAGER", "COORDINATOR", "HUMAN_RESOURCE"] as const;
+
+/** Roles that see the /staff task portal */
+export const STAFF_SIDE_ROLES = ["PHOTOGRAPHER", "VIDEO_EDITOR", "EDITOR", "DRIVER", "ASSISTANT"] as const;
+
+/** Roles that can manage the employee roster (create/edit staff accounts) */
+export const EMPLOYEE_MANAGER_ROLES = ["FOUNDER", "ADMIN"] as const;
+
+/** Staff role values that require full admin access (can promote to ADMIN UserRole) */
+export const ADMIN_ELEVATED_ROLES = ["ADMIN"] as const;
+
+/** Check whether a staffRole is one that only the FOUNDER can assign */
+export function isFounderOnlyRole(staffRole: string | null): boolean {
+  return staffRole === "ADMIN";
+}
+
 export const ADMIN_NAV_ITEMS = [
   { href: "/admin",                     label: "Dashboard",    roles: ["ADMIN"] },
   { href: "/admin/approvals",           label: "Approvals",    roles: ["ADMIN", "COORDINATOR"] },
@@ -19,14 +40,14 @@ export const ADMIN_NAV_ITEMS = [
   { href: "/admin/analytics",           label: "Analytics",    roles: ["ADMIN", "HUMAN_RESOURCE"] },
   { href: "/admin/media-library",       label: "Media Library",roles: ["ADMIN", "PHOTOGRAPHER", "VIDEO_EDITOR", "EDITOR"] },
   { href: "/admin/reports",             label: "Reports",      roles: ["ADMIN", "HUMAN_RESOURCE"] },
-  { href: "/admin/academy",             label: "Academy",      roles: null },
+  { href: "/admin/academy",             label: "Academy",      roles: ["ADMIN", "PRODUCTION_MANAGER", "PHOTOGRAPHER", "VIDEO_EDITOR", "EDITOR", "COORDINATOR", "DRIVER", "ASSISTANT"] },
   { href: "/admin/employees",           label: "Employees",    roles: ["ADMIN", "HUMAN_RESOURCE"] },
   { href: "/admin/equipment",           label: "Equipment",    roles: ["ADMIN", "PRODUCTION_MANAGER", "COORDINATOR", "DRIVER"] },
   { href: "/admin/equipment/returns",   label: "Returns",      roles: ["ADMIN", "PRODUCTION_MANAGER", "COORDINATOR", "DRIVER"] },
   { href: "/admin/legal",               label: "Legal",        roles: ["ADMIN"] },
   { href: "/admin/security",            label: "Security",     roles: ["ADMIN"] },
-  { href: "/admin/messages",            label: "Messages",     roles: null },
-  { href: "/admin/meetings",            label: "Meetings",     roles: null },
+  { href: "/admin/messages",            label: "Messages",     roles: ["ADMIN", "PRODUCTION_MANAGER", "COORDINATOR"] },
+  { href: "/admin/meetings",            label: "Meetings",     roles: ["ADMIN", "PRODUCTION_MANAGER", "COORDINATOR"] },
 ] as const;
 
 type AdminUser = NonNullable<Awaited<ReturnType<typeof getCurrentUser>>>;
@@ -66,9 +87,7 @@ export async function requireAdminAccess(pathname: AdminPath | string) {
   const user = await requireAdmin();
 
   if (!canAccessAdminPath(user, pathname)) {
-    // Admin-side staff roles belong in /admin, field staff in /staff
-    const adminStaffRoles = ["ADMIN","PRODUCTION_MANAGER","COORDINATOR","HUMAN_RESOURCE"];
-    const dest = (user.role === "STAFF" && user.staffRole && adminStaffRoles.includes(user.staffRole))
+    const dest = (user.role === "STAFF" && user.staffRole && (ADMIN_SIDE_ROLES as readonly string[]).includes(user.staffRole))
       ? "/admin"
       : user.role === "STAFF" ? "/staff" : "/admin";
     redirect(dest);
@@ -82,8 +101,7 @@ export async function requireAnyAdminAccess(pathnames: Array<AdminPath | string>
   const user = await requireAdmin();
 
   if (!pathnames.some((pathname) => canAccessAdminPath(user, pathname))) {
-    const adminStaffRoles = ["ADMIN","PRODUCTION_MANAGER","COORDINATOR","HUMAN_RESOURCE"];
-    const dest = (user.role === "STAFF" && user.staffRole && adminStaffRoles.includes(user.staffRole))
+    const dest = (user.role === "STAFF" && user.staffRole && (ADMIN_SIDE_ROLES as readonly string[]).includes(user.staffRole))
       ? "/admin"
       : user.role === "STAFF" ? "/staff" : "/admin";
     redirect(dest);
@@ -93,7 +111,8 @@ export async function requireAnyAdminAccess(pathnames: Array<AdminPath | string>
 }
 
 export function canManageEmployees(user: { role: string; staffRole: string | null }) {
-  return user.role === "FOUNDER"
-    || user.role === "ADMIN"
-    || user.staffRole === "HUMAN_RESOURCE";
+  if (EMPLOYEE_MANAGER_ROLES.includes(user.role as any)) return true;
+  // HR can view/manage the list but must NOT create ADMIN accounts (enforced server-side)
+  if (user.staffRole === "HUMAN_RESOURCE") return true;
+  return false;
 }

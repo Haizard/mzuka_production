@@ -1,6 +1,6 @@
 "use server";
 
-import { canManageEmployees, requireAdminAccess } from "@/lib/admin-permissions";
+import { canManageEmployees, requireAdminAccess, isFounderOnlyRole } from "@/lib/admin-permissions";
 import { prisma } from "@/lib/db";
 import { hashPassword } from "@/lib/password";
 import { nanoid } from "nanoid";
@@ -21,9 +21,16 @@ export async function createStaffMemberAction(data: {
     const admin = await requireAdminAccess("/admin/employees");
     if (!canManageEmployees(admin)) return { success: false, error: "Forbidden" };
 
+    // SECURITY: Only the FOUNDER can create ADMIN-staff accounts.
+    // HR and other managers cannot elevate themselves or others to admin.
+    if (isFounderOnlyRole(data.staffRole) && admin.role !== "FOUNDER") {
+      return { success: false, error: "Only the founder can create admin accounts" };
+    }
+
     const existing = await prisma.user.findUnique({ where: { email: data.email } });
     if (existing) return { success: false, error: "An account with this email already exists" };
 
+    // isProductionManager is derived from staffRole — no separate flag
     const isPM = data.staffRole === "PRODUCTION_MANAGER";
 
     const member = await prisma.user.create({
@@ -49,22 +56,22 @@ export async function createStaffMemberAction(data: {
       },
     });
 
-    // Create the ClientApproval record
     await prisma.clientApproval.create({
       data: {
         clientId:  member.id,
         status:    "APPROVED",
         decidedAt: new Date(),
-        notes:     `Staff account created by admin — role: ${data.staffRole}`,
+        notes:     `Staff account created by ${admin.email} — role: ${data.staffRole}`,
       },
     });
 
     await prisma.auditLog.create({
       data: {
-        action:   "CLIENT_APPROVED",
+        actorId:  admin.id,
+        action:   "ROLE_CHANGED",
         entity:   "User",
         entityId: member.id,
-        metadata: { staffRole: data.staffRole, createdByAdmin: true },
+        metadata: { staffRole: data.staffRole, action: "STAFF_CREATED", createdBy: admin.email },
       },
     });
 
@@ -82,17 +89,23 @@ export async function updateStaffRoleAction(staffId: string, staffRole: string) 
     const admin = await requireAdminAccess("/admin/employees");
     if (!canManageEmployees(admin)) return { success: false, error: "Forbidden" };
 
+    // SECURITY: Prevent self-elevation
+    if (staffId === admin.id) {
+      return { success: false, error: "You cannot change your own role" };
+    }
+
     const staff = await prisma.user.findUnique({ where: { id: staffId } });
     if (!staff) return { success: false, error: "Staff member not found" };
     if (!["STAFF","ADMIN","FOUNDER"].includes(staff.role)) {
       return { success: false, error: "Can only update roles for staff accounts" };
     }
+    // SECURITY: Only the FOUNDER can assign the ADMIN staff role
+    if (isFounderOnlyRole(staffRole) && admin.role !== "FOUNDER") {
+      return { success: false, error: "Only the founder can assign admin roles" };
+    }
 
-    // When promoting to ADMIN staffRole, also elevate the UserRole enum so
-    // they gain full admin-level access immediately (session re-validates from DB).
-    // All other staffRoles stay as STAFF in the UserRole enum.
+    const prevRole = staff.staffRole;
     const newUserRole = staffRole === "ADMIN" ? "ADMIN" : "STAFF";
-    // Sync isProductionManager with staffRole so both signals stay consistent
     const isPM = staffRole === "PRODUCTION_MANAGER";
 
     await prisma.user.update({
@@ -102,10 +115,16 @@ export async function updateStaffRoleAction(staffId: string, staffRole: string) 
 
     await prisma.auditLog.create({
       data: {
-        action: "CLIENT_APPROVED",
-        entity: "User",
+        actorId:  admin.id,
+        action:   "ROLE_CHANGED",
+        entity:   "User",
         entityId: staffId,
-        metadata: { staffRole, userRole: newUserRole, updatedByAdmin: true },
+        metadata: {
+          previousRole: prevRole,
+          newRole: staffRole,
+          userRole: newUserRole,
+          changedBy: admin.email,
+        },
       },
     });
 
@@ -113,6 +132,73 @@ export async function updateStaffRoleAction(staffId: string, staffRole: string) 
   } catch (error) {
     console.error("updateStaffRole:", error);
     return { success: false, error: "Failed to update role" };
+  }
+}
+
+// ── Suspend / Activate staff (admin only) ─────────────────────────────────────
+
+export async function suspendStaffAction(staffId: string) {
+  try {
+    const admin = await requireAdminAccess("/admin/employees");
+    if (!canManageEmployees(admin)) return { success: false, error: "Forbidden" };
+    if (staffId === admin.id) return { success: false, error: "You cannot suspend your own account" };
+
+    const staff = await prisma.user.findUnique({ where: { id: staffId } });
+    if (!staff) return { success: false, error: "Staff member not found" };
+    if (staff.role === "FOUNDER") return { success: false, error: "Cannot suspend the founder account" };
+
+    await prisma.user.update({
+      where: { id: staffId },
+      data: { approvalStatus: "DEACTIVATED" },
+    });
+
+    await prisma.auditLog.create({
+      data: {
+        actorId:  admin.id,
+        action:   "STAFF_SUSPENDED",
+        entity:   "User",
+        entityId: staffId,
+        metadata: { suspendedBy: admin.email, reason: "Account deactivated by admin" },
+      },
+    });
+
+    return { success: true };
+  } catch (error) {
+    console.error("suspendStaff:", error);
+    return { success: false, error: "Failed to suspend staff member" };
+  }
+}
+
+export async function activateStaffAction(staffId: string) {
+  try {
+    const admin = await requireAdminAccess("/admin/employees");
+    if (!canManageEmployees(admin)) return { success: false, error: "Forbidden" };
+
+    const staff = await prisma.user.findUnique({ where: { id: staffId } });
+    if (!staff) return { success: false, error: "Staff member not found" };
+    if (staff.approvalStatus !== "DEACTIVATED") {
+      return { success: false, error: "Account is not deactivated" };
+    }
+
+    await prisma.user.update({
+      where: { id: staffId },
+      data: { approvalStatus: "APPROVED" },
+    });
+
+    await prisma.auditLog.create({
+      data: {
+        actorId:  admin.id,
+        action:   "STAFF_ACTIVATED",
+        entity:   "User",
+        entityId: staffId,
+        metadata: { activatedBy: admin.email },
+      },
+    });
+
+    return { success: true };
+  } catch (error) {
+    console.error("activateStaff:", error);
+    return { success: false, error: "Failed to activate staff member" };
   }
 }
 

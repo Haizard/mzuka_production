@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth";
+import { ADMIN_SIDE_ROLES } from "@/lib/admin-permissions";
 import Link from "next/link";
 import { logoutAction } from "@/app/(auth)/actions";
 import { ListTodo, LogOut, Camera, Video, Scissors, Car, Users2, MessageSquare, Bot } from "lucide-react";
@@ -22,8 +23,7 @@ export default async function StaffLayout({ children }: { children: React.ReactN
   if (!["FOUNDER","ADMIN","STAFF"].includes(user.role)) redirect("/client");
 
   // Admin-side staff roles should be in the admin panel, not the staff task portal
-  const adminStaffRoles = ["ADMIN","PRODUCTION_MANAGER","COORDINATOR","HUMAN_RESOURCE"];
-  if (user.staffRole && adminStaffRoles.includes(user.staffRole)) {
+  if (user.staffRole && (ADMIN_SIDE_ROLES as readonly string[]).includes(user.staffRole)) {
     redirect("/admin");
   }
 

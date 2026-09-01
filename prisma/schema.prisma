@@ -18,6 +18,7 @@ enum ApprovalStatus {
   APPROVED
   REJECTED
   SUSPENDED
+  DEACTIVATED
 }
 
 enum BookingStatus {
@@ -60,6 +61,9 @@ enum AuditAction {
   DOWNLOAD_UNLOCKED
   FILE_DOWNLOADED
   ACCESS_REVOKED
+  ROLE_CHANGED
+  STAFF_SUSPENDED
+  STAFF_ACTIVATED
 }
 
 enum ProjectStage {

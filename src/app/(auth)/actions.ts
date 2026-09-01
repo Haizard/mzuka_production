@@ -129,6 +129,9 @@ export async function loginAction(
 
   await createUserSession(user.id);
 
+  if (user.approvalStatus === "DEACTIVATED") {
+    redirect("/login?error=account-deactivated");
+  }
   if (user.approvalStatus !== "APPROVED") {
     redirect("/pending-approval");
   }

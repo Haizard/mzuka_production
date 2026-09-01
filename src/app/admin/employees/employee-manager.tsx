@@ -1,19 +1,23 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import {
-  Users, Plus, Pencil, ShieldCheck, Briefcase, X, Check,
+  Users, Plus, Pencil, ShieldCheck, Briefcase, X, Search,
+  Ban, CheckCircle2, AlertTriangle,
 } from "lucide-react";
 import { STAFF_ROLES, type StaffRoleValue } from "./staff-roles";
 import {
   createStaffMemberAction,
   updateStaffRoleAction,
+  suspendStaffAction,
+  activateStaffAction,
 } from "./staff-actions";
 import { toggleProductionManagerAction } from "@/app/admin/equipment/actions";
 
 interface StaffMember {
   id: string; name: string; email: string; phone: string | null;
   role: string; staffRole: string | null; isProductionManager: boolean; createdAt: Date;
+  approvalStatus?: string;
   staffAssignments: { id: string; role: string; project: { id: string; stage: string; booking: { title: string } } }[];
 }
 
@@ -27,23 +31,38 @@ export function EmployeeManager({ staff, grouped, roleBreakdown }: {
   roleBreakdown: RoleBreakdown[];
 }) {
   const [activeRole, setActiveRole] = useState<string>("ALL");
+  const [searchQuery, setSearchQuery] = useState("");
   const [showCreate, setShowCreate] = useState(false);
   const [editMember, setEditMember] = useState<StaffMember | null>(null);
   const [msg, setMsg] = useState<{ text: string; ok: boolean } | null>(null);
   const [localStaff, setLocalStaff] = useState(staff);
+  const [confirmSuspend, setConfirmSuspend] = useState<StaffMember | null>(null);
 
   const flash = (text: string, ok = true) => {
     setMsg({ text, ok });
     setTimeout(() => setMsg(null), 3500);
   };
 
-  // Filtered list
-  const displayed = activeRole === "ALL"
-    ? localStaff
-    : localStaff.filter((m) => {
-        const key = m.staffRole ?? (m.role === "FOUNDER" ? "ADMIN" : m.role);
-        return key === activeRole;
-      });
+  // Filtered list with search
+  const displayed = useMemo(() => {
+    let list = activeRole === "ALL"
+      ? localStaff
+      : localStaff.filter((m) => {
+          const key = m.staffRole ?? (m.role === "FOUNDER" ? "ADMIN" : m.role);
+          return key === activeRole;
+        });
+
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      list = list.filter((m) =>
+        m.name.toLowerCase().includes(q) ||
+        m.email.toLowerCase().includes(q) ||
+        (m.phone && m.phone.includes(q))
+      );
+    }
+
+    return list;
+  }, [localStaff, activeRole, searchQuery]);
 
   const handleRoleUpdate = async (memberId: string, newStaffRole: string, isPM: boolean) => {
     const [roleRes, pmRes] = await Promise.all([
@@ -72,10 +91,37 @@ export function EmployeeManager({ staff, grouped, roleBreakdown }: {
     }
   };
 
+  const handleSuspend = async (member: StaffMember) => {
+    const res = await suspendStaffAction(member.id);
+    if (res.success) {
+      setLocalStaff((prev) => prev.map((m) =>
+        m.id === member.id ? { ...m, approvalStatus: "DEACTIVATED" } : m
+      ));
+      flash(`${member.name} has been deactivated`);
+      setConfirmSuspend(null);
+    } else {
+      flash(res.error ?? "Failed to suspend", false);
+    }
+  };
+
+  const handleActivate = async (member: StaffMember) => {
+    const res = await activateStaffAction(member.id);
+    if (res.success) {
+      setLocalStaff((prev) => prev.map((m) =>
+        m.id === member.id ? { ...m, approvalStatus: "APPROVED" } : m
+      ));
+      flash(`${member.name} has been reactivated`);
+    } else {
+      flash(res.error ?? "Failed to activate", false);
+    }
+  };
+
   const getRoleInfo = (member: StaffMember) => {
     const key = member.staffRole ?? (member.role === "FOUNDER" ? "ADMIN" : "STAFF");
     return STAFF_ROLES.find((r) => r.value === key) ?? { label: key, colour: "text-zinc-400 bg-zinc-700/50" };
   };
+
+  const isDeactivated = (m: StaffMember) => m.approvalStatus === "DEACTIVATED";
 
   return (
     <div className="space-y-4">
@@ -85,8 +131,8 @@ export function EmployeeManager({ staff, grouped, roleBreakdown }: {
         </div>
       )}
 
-      {/* Role filter tabs */}
-      <div className="flex flex-wrap gap-2 items-center justify-between">
+      {/* Search + Role filter tabs */}
+      <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
         <div className="flex flex-wrap gap-1.5">
           <button onClick={() => setActiveRole("ALL")}
             className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition ${activeRole === "ALL" ? "bg-white/15 text-white border-white/20" : "border-white/10 text-zinc-400 hover:text-white"}`}>
@@ -99,31 +145,43 @@ export function EmployeeManager({ staff, grouped, roleBreakdown }: {
             </button>
           ))}
         </div>
-        <button onClick={() => setShowCreate(true)}
-          className="flex items-center gap-2 px-4 py-2 rounded-lg bg-[var(--gold)] text-black text-sm font-semibold hover:bg-yellow-400 transition">
-          <Plus className="h-4 w-4" /> Add Staff
-        </button>
+        <div className="flex items-center gap-2 w-full sm:w-auto">
+          <div className="relative flex-1 sm:flex-initial">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-zinc-500" />
+            <input
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search name, email…"
+              className="w-full sm:w-48 pl-8 pr-3 py-1.5 rounded-lg bg-white/5 border border-white/10 text-xs text-white placeholder:text-zinc-600 focus:outline-none focus:border-[var(--gold)]"
+            />
+          </div>
+          <button onClick={() => setShowCreate(true)}
+            className="flex items-center gap-2 px-4 py-1.5 rounded-lg bg-[var(--gold)] text-black text-xs font-semibold hover:bg-yellow-400 transition shrink-0">
+            <Plus className="h-3.5 w-3.5" /> Add Staff
+          </button>
+        </div>
       </div>
 
       {/* Staff grid */}
       {displayed.length === 0 ? (
         <div className="py-12 text-center rounded-lg border border-white/10 bg-[var(--surface)] text-zinc-500">
-          No staff in this role
+          {searchQuery ? "No staff match your search" : "No staff in this role"}
         </div>
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {displayed.map((member) => {
             const roleInfo = getRoleInfo(member);
+            const deactivated = isDeactivated(member);
             return (
-              <div key={member.id} className="rounded-lg border border-white/10 bg-[var(--surface)] p-5">
+              <div key={member.id} className={`rounded-lg border bg-[var(--surface)] p-5 transition ${deactivated ? "border-red-500/20 opacity-60" : "border-white/10"}`}>
                 {/* Header */}
                 <div className="flex items-start justify-between mb-3">
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-[var(--gold)]/20 flex items-center justify-center text-[var(--gold)] font-bold text-sm shrink-0">
+                    <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm shrink-0 ${deactivated ? "bg-red-500/10 text-red-400" : "bg-[var(--gold)]/20 text-[var(--gold)]"}`}>
                       {member.name.charAt(0).toUpperCase()}
                     </div>
                     <div className="min-w-0">
-                      <p className="font-semibold text-white truncate">{member.name}</p>
+                      <p className={`font-semibold truncate ${deactivated ? "text-zinc-500" : "text-white"}`}>{member.name}</p>
                       <p className="text-xs text-zinc-500 truncate">{member.email}</p>
                     </div>
                   </div>
@@ -133,7 +191,7 @@ export function EmployeeManager({ staff, grouped, roleBreakdown }: {
                   </button>
                 </div>
 
-                {/* Role badge */}
+                {/* Role badge + status */}
                 <div className="flex flex-wrap gap-2 mb-3">
                   <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${roleInfo.colour}`}>
                     {roleInfo.label}
@@ -141,6 +199,11 @@ export function EmployeeManager({ staff, grouped, roleBreakdown }: {
                   {member.isProductionManager && (
                     <span className="text-xs px-2 py-0.5 rounded-full bg-violet-500/15 text-violet-300 flex items-center gap-1">
                       <ShieldCheck className="h-3 w-3" /> PM
+                    </span>
+                  )}
+                  {deactivated && (
+                    <span className="text-xs px-2 py-0.5 rounded-full bg-red-500/15 text-red-300 flex items-center gap-1">
+                      <Ban className="h-3 w-3" /> Deactivated
                     </span>
                   )}
                 </div>
@@ -166,6 +229,23 @@ export function EmployeeManager({ staff, grouped, roleBreakdown }: {
                     ))}
                   </div>
                 )}
+
+                {/* Suspend / Activate actions */}
+                {member.role !== "FOUNDER" && (
+                  <div className="mt-3 pt-3 border-t border-white/10">
+                    {deactivated ? (
+                      <button onClick={() => handleActivate(member)}
+                        className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border border-emerald-500/30 text-emerald-300 hover:bg-emerald-500/10 transition w-full justify-center">
+                        <CheckCircle2 className="h-3.5 w-3.5" /> Reactivate Account
+                      </button>
+                    ) : (
+                      <button onClick={() => setConfirmSuspend(member)}
+                        className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border border-red-500/20 text-red-400 hover:bg-red-500/10 transition w-full justify-center">
+                        <Ban className="h-3.5 w-3.5" /> Deactivate Account
+                      </button>
+                    )}
+                  </div>
+                )}
               </div>
             );
           })}
@@ -184,6 +264,35 @@ export function EmployeeManager({ staff, grouped, roleBreakdown }: {
           onClose={() => setEditMember(null)}
           onSave={handleRoleUpdate}
         />
+      )}
+
+      {/* Confirm suspend modal */}
+      {confirmSuspend && (
+        <Modal title="Deactivate Account" onClose={() => setConfirmSuspend(null)}>
+          <div className="space-y-4">
+            <div className="flex items-start gap-3 p-3 rounded-lg bg-red-500/10 border border-red-500/20">
+              <AlertTriangle className="h-5 w-5 text-red-400 shrink-0 mt-0.5" />
+              <div>
+                <p className="text-sm font-medium text-red-300">
+                  Deactivate {confirmSuspend.name}?
+                </p>
+                <p className="text-xs text-red-400/70 mt-1">
+                  They will be logged out and unable to sign in until reactivated.
+                </p>
+              </div>
+            </div>
+            <div className="flex justify-end gap-3">
+              <button onClick={() => setConfirmSuspend(null)}
+                className="px-4 py-2 rounded-lg border border-white/10 text-sm text-zinc-400 hover:text-white transition">
+                Cancel
+              </button>
+              <button onClick={() => handleSuspend(confirmSuspend)}
+                className="px-4 py-2 rounded-lg bg-red-600 text-white text-sm font-semibold hover:bg-red-500 transition">
+                Deactivate
+              </button>
+            </div>
+          </div>
+        </Modal>
       )}
     </div>
   );
@@ -266,7 +375,7 @@ function EditRoleModal({ member, onClose, onSave }: {
 }) {
   const current = member.staffRole ?? (member.role === "FOUNDER" ? "ADMIN" : "PHOTOGRAPHER");
   const [staffRole, setStaffRole] = useState<StaffRoleValue>(current as StaffRoleValue);
-  const [isPM, setIsPM] = useState(member.isProductionManager);
+  const isPM = staffRole === "PRODUCTION_MANAGER";
   const [saving, setSaving] = useState(false);
 
   const save = async () => {
@@ -288,18 +397,12 @@ function EditRoleModal({ member, onClose, onSave }: {
           </select>
         </div>
 
-        {member.role === "STAFF" && (
-          <div className="flex items-center justify-between p-3 rounded-lg bg-white/5">
-            <div>
-              <p className="text-sm font-medium text-white flex items-center gap-2">
-                <ShieldCheck className="h-4 w-4 text-violet-400" /> Production Manager
-              </p>
-              <p className="text-xs text-zinc-500 mt-0.5">Can manage equipment inventory and approve returns</p>
-            </div>
-            <button onClick={() => setIsPM((p) => !p)}
-              className={`relative w-11 h-6 rounded-full transition-colors ${isPM ? "bg-violet-600" : "bg-zinc-700"}`}>
-              <span className={`absolute top-1 h-4 w-4 rounded-full bg-white shadow transition-transform ${isPM ? "translate-x-6" : "translate-x-1"}`} />
-            </button>
+        {isPM && (
+          <div className="p-3 rounded-lg bg-violet-500/10 border border-violet-500/20">
+            <p className="text-sm font-medium text-violet-300 flex items-center gap-2">
+              <ShieldCheck className="h-4 w-4" /> Production Manager
+            </p>
+            <p className="text-xs text-violet-400/60 mt-0.5">Can manage equipment inventory and approve returns</p>
           </div>
         )}
 
