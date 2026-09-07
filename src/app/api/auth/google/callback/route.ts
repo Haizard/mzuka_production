@@ -5,7 +5,6 @@ import { createUserSession } from "@/lib/auth";
 
 // GET /api/auth/google/callback — exchange code for tokens, find/create user, sign in
 export async function GET(req: NextRequest) {
-  // Use the request's own origin — always correct, no env vars needed
   const origin = req.nextUrl.origin;
 
   const { searchParams } = new URL(req.url);
@@ -14,11 +13,11 @@ export async function GET(req: NextRequest) {
   const error = searchParams.get("error");
 
   if (error) {
-    return NextResponse.redirect(`${origin}/login?error=google_cancelled`);
+    return htmlRedirect(`${origin}/login?error=google_cancelled`);
   }
 
   if (!code || !state) {
-    return NextResponse.redirect(`${origin}/login?error=google_failed`);
+    return htmlRedirect(`${origin}/login?error=google_failed`);
   }
 
   // Validate CSRF state
@@ -26,7 +25,7 @@ export async function GET(req: NextRequest) {
   const savedState = cookieStore.get("google_oauth_state")?.value;
 
   if (!savedState || savedState !== state) {
-    return NextResponse.redirect(`${origin}/login?error=google_failed`);
+    return htmlRedirect(`${origin}/login?error=google_failed`);
   }
 
   cookieStore.delete("google_oauth_state");
@@ -35,10 +34,9 @@ export async function GET(req: NextRequest) {
   const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
 
   if (!clientId || !clientSecret) {
-    return NextResponse.redirect(`${origin}/login?error=google_failed`);
+    return htmlRedirect(`${origin}/login?error=google_failed`);
   }
 
-  // Use the request origin for the redirect URI (must match what Google Console expects)
   const redirectUri = `${origin}/api/auth/google/callback`;
 
   try {
@@ -57,7 +55,7 @@ export async function GET(req: NextRequest) {
 
     if (!tokenRes.ok) {
       console.error("[google-auth] token exchange failed:", tokenRes.status);
-      return NextResponse.redirect(`${origin}/login?error=google_failed`);
+      return htmlRedirect(`${origin}/login?error=google_failed`);
     }
 
     const tokens = await tokenRes.json();
@@ -70,7 +68,7 @@ export async function GET(req: NextRequest) {
 
     if (!profileRes.ok) {
       console.error("[google-auth] profile fetch failed:", profileRes.status);
-      return NextResponse.redirect(`${origin}/login?error=google_failed`);
+      return htmlRedirect(`${origin}/login?error=google_failed`);
     }
 
     const profile = await profileRes.json();
@@ -78,7 +76,7 @@ export async function GET(req: NextRequest) {
     const name = profile.name || email?.split("@")[0] || "Google User";
 
     if (!email) {
-      return NextResponse.redirect(`${origin}/login?error=google_failed`);
+      return htmlRedirect(`${origin}/login?error=google_failed`);
     }
 
     // Find existing user by email
@@ -118,13 +116,25 @@ export async function GET(req: NextRequest) {
     // Create session
     await createUserSession(user.id);
 
-    // ALWAYS redirect to /login — the login page server component reads
-    // the session cookie and performs the role-based redirect from there.
-    // This avoids the redirect loop where direct /admin redirect can't
-    // read the cookie set in the same redirect chain.
-    return NextResponse.redirect(`${origin}/login`);
+    // Return HTML page that stores the cookie then redirects client-side.
+    // Server-side NextResponse.redirect() from API routes can fail to pass
+    // Set-Cookie headers reliably in some environments, causing redirect loops.
+    return htmlRedirect(`${origin}/login`);
   } catch (err) {
     console.error("[google-auth] unexpected error:", err);
-    return NextResponse.redirect(`${origin}/login?error=google_failed`);
+    return htmlRedirect(`${origin}/login?error=google_failed`);
   }
+}
+
+// Return a minimal HTML page that redirects client-side.
+// This ensures Set-Cookie headers from the response are processed by the
+// browser before navigation, preventing the redirect loop.
+function htmlRedirect(url: string) {
+  return new NextResponse(
+    `<!DOCTYPE html><html><head><meta http-equiv="refresh" content="0;url=${url}"></head><body><script>window.location.replace("${url}")</script></body></html>`,
+    {
+      status: 200,
+      headers: { "Content-Type": "text/html" },
+    }
+  );
 }
