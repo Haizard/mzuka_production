@@ -71,6 +71,9 @@ enum AuditAction {
   ONBOARDING_COMPLETED
   COMMISSION_APPROVED
   COMMISSION_PAID
+  EMERGENCY_REPORT_FILED
+  EMERGENCY_REPORT_ESCALATED
+  EMERGENCY_REPORT_RESOLVED
 }
 
 enum ProjectStage {
@@ -131,6 +134,10 @@ model User {
   inAppNotifications InAppNotification[] @relation("InAppNotifUser")
   clientMemory       ClientMemory?       @relation("ClientMemoryUser")
   notifPrefs         NotificationPreference? @relation("NotifPrefUser")
+  // Emergency reports
+  filedReports       EmergencyReport[]    @relation("ReportAuthor")
+  resolvedReports    EmergencyReport[]    @relation("ReportResolver")
+  reportUpdates      ReportUpdate[]       @relation("ReportUpdateAuthor")
 }
 
 model ClientApproval {
@@ -802,4 +809,86 @@ model NotificationPreference {
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
   user             User     @relation("NotifPrefUser", fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// ── HR: Emergency / Incident Reports ───────────────────────────────────────
+
+enum ReportSeverity {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum ReportCategory {
+  SICKNESS
+  INJURY
+  ACCIDENT
+  EQUIPMENT_DAMAGE
+  CLIENT_COMPLAINT
+  STAFF_CONFLICT
+  SAFETY_INCIDENT
+  PROPERTY_DAMAGE
+  FINANCIAL_DISCREPANCY
+  OTHER
+}
+
+enum ReportStatus {
+  OPEN
+  UNDER_REVIEW
+  RESOLVED
+  ESCALATED
+}
+
+model EmergencyReport {
+  id              String         @id @default(cuid())
+  title           String
+  category        ReportCategory
+  severity        ReportSeverity @default(MEDIUM)
+  description     String         // detailed factual account of the incident
+  staffInvolved   String?        // names or IDs of staff involved
+  witnesses       String?        // names of witnesses
+  location        String?        // where it occurred
+  dateOfIncident  DateTime       // when it happened
+  status          ReportStatus   @default(OPEN)
+
+  // Resolution tracking
+  resolutionNotes String?
+  resolvedById    String?
+  resolvedAt      DateTime?
+
+  // Follow-up
+  followUpRequired Boolean @default(false)
+  followUpDate     DateTime?
+  followUpNotes    String?
+
+  // Evidence / attachments stored as JSON array
+  // [{ name: string, url: string, type: string }]
+  attachments     Json?
+
+  // Audit trail
+  reportedById    String
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  reportedBy      User     @relation("ReportAuthor", fields: [reportedById], references: [id])
+  resolvedBy      User?    @relation("ReportResolver", fields: [resolvedById], references: [id])
+  updates         ReportUpdate[]
+
+  @@index([status])
+  @@index([severity])
+  @@index([category])
+  @@index([reportedById])
+}
+
+model ReportUpdate {
+  id             String          @id @default(cuid())
+  reportId       String
+  authorId       String
+  body           String
+  isEscalation   Boolean         @default(false)
+  createdAt      DateTime        @default(now())
+  report         EmergencyReport @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  author         User            @relation("ReportUpdateAuthor", fields: [authorId], references: [id])
+
+  @@index([reportId])
 }

@@ -2,7 +2,7 @@ import Link from "next/link";
 import {
   CalendarDays, GalleryHorizontalEnd, ShieldCheck, UserCheck,
   Users, Clapperboard, Package, DollarSign, Wrench, RotateCcw,
-  BarChart2, Camera, Video, BookOpen, CalendarOff, ClipboardCheck, Award,
+  BarChart2, Camera, Video, BookOpen, CalendarOff, ClipboardCheck, Award, Shield,
 } from "lucide-react";
 import { requireAdminAccess } from "@/lib/admin-permissions";
 import { prisma } from "@/lib/db";
@@ -199,6 +199,7 @@ export default async function AdminPage() {
           { href: "/admin/commissions",      icon: Award,      label: "Commissions",  desc: "Staff commission tracking" },
           { href: "/admin/finance",          icon: DollarSign, label: "Finance",      desc: "Invoices and expenses" },
           { href: "/admin/analytics",        icon: BarChart2,  label: "Analytics",    desc: "Business reports" },
+          { href: "/admin/emergency-reports", icon: Shield,     label: "Emergency Reports", desc: "Incidents and safety reports" },
         ]} />
       </DashboardShell>
     );
