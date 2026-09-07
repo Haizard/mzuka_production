@@ -138,6 +138,8 @@ model User {
   filedReports       EmergencyReport[]    @relation("ReportAuthor")
   resolvedReports    EmergencyReport[]    @relation("ReportResolver")
   reportUpdates      ReportUpdate[]       @relation("ReportUpdateAuthor")
+  // Legal documents
+  legalDocuments     LegalDocument[]      @relation("LegalDocUploader")
 }
 
 model ClientApproval {
@@ -891,4 +893,25 @@ model ReportUpdate {
   author         User            @relation("ReportUpdateAuthor", fields: [authorId], references: [id])
 
   @@index([reportId])
+}
+
+// ── Legal Documents ─────────────────────────────────────────────────────────
+
+model LegalDocument {
+  id          String   @id @default(cuid())
+  title       String
+  description String?
+  category    String   // "agreement" | "policy" | "terms" | "notice" | "other"
+  fileUrl     String?  // S3 key or external URL
+  fileName    String?  // original filename
+  fileSize    Int?     // bytes
+  mimeType    String?  // "application/pdf", "image/png", etc.
+  isPublished Boolean  @default(true)
+  uploadedById String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  uploadedBy  User     @relation("LegalDocUploader", fields: [uploadedById], references: [id])
+
+  @@index([category])
+  @@index([uploadedById])
 }
