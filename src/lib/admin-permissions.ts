@@ -23,7 +23,7 @@ export function isFounderOnlyRole(staffRole: string | null): boolean {
 }
 
 export const ADMIN_NAV_ITEMS = [
-  { href: "/admin",                     label: "Dashboard",    roles: ["ADMIN"] },
+  { href: "/admin",                     label: "Dashboard",    roles: ["ADMIN", "PRODUCTION_MANAGER", "COORDINATOR", "HUMAN_RESOURCE"] },
   { href: "/admin/approvals",           label: "Approvals",    roles: ["ADMIN", "COORDINATOR"] },
   { href: "/admin/bookings",            label: "Bookings",     roles: ["ADMIN", "PRODUCTION_MANAGER", "PHOTOGRAPHER", "COORDINATOR", "ASSISTANT"] },
   { href: "/admin/packages",            label: "Packages",     roles: ["ADMIN"] },
