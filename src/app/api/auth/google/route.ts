@@ -2,26 +2,16 @@ import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { randomBytes } from "node:crypto";
 
-function getBaseUrl() {
-  const envUrl =
-    process.env.NEXTAUTH_URL ||
-    process.env.AUTH_URL ||
-    process.env.NEXT_PUBLIC_APP_URL ||
-    process.env.NEXT_PUBLIC_BASE_URL;
-  if (envUrl) return envUrl.replace(/\/$/, "");
-  if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`;
-  return "http://localhost:3000";
-}
-
 // GET /api/auth/google — redirect to Google with CSRF state parameter
-export async function GET(_req: NextRequest) {
+export async function GET(req: NextRequest) {
   const clientId = process.env.GOOGLE_CLIENT_ID;
   if (!clientId) {
     return NextResponse.json({ error: "Google OAuth not configured" }, { status: 503 });
   }
 
-  const base = getBaseUrl();
-  const redirectUri = `${base}/api/auth/google/callback`;
+  // Use request origin — always correct regardless of env vars
+  const origin = req.nextUrl.origin;
+  const redirectUri = `${origin}/api/auth/google/callback`;
 
   // Generate and store CSRF state parameter
   const state = randomBytes(32).toString("hex");

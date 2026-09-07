@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import OpenAI from "openai";
+import { chatCompletion, type ChatMessage } from "@/lib/ai-client";
 
 const SUPPORT_SYSTEM_PROMPT = `You are Aiko, the AI customer support assistant and sales representative for Muzuka Gilbert — a luxury photography and videography studio.
 
@@ -60,33 +60,25 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "No messages provided" }, { status: 400 });
     }
 
-    const apiKey = process.env.OPENAI_API_KEY;
-    if (!apiKey || apiKey === "replace-me") {
-      // Graceful fallback when OpenAI is not configured
-      return NextResponse.json({
-        reply: "Hello! I'm Aiko, Muzuka Gilbert's AI assistant. Our team will be with you shortly. In the meantime, feel free to browse our services or book a session online!",
-      });
-    }
-
-    const openai = new OpenAI({ apiKey });
-
     // Build system prompt — inject language preference if provided
     let systemPrompt = SUPPORT_SYSTEM_PROMPT;
     if (language && language !== "English") {
       systemPrompt += `\n\nCRITICAL: The user has selected ${language} as their preferred language. You MUST respond ENTIRELY in ${language} for this entire conversation. Do not switch back to English under any circumstances.`;
     }
 
-    const completion = await openai.chat.completions.create({
-      model: "gpt-4o-mini", // cost-efficient for public support chat
-      messages: [
-        { role: "system", content: systemPrompt },
-        ...messages,
-      ],
-      max_tokens: 400,
+    // Convert messages to ChatMessage format
+    const chatMessages: ChatMessage[] = [
+      { role: "system", content: systemPrompt },
+      ...messages.map((m) => ({ role: m.role, content: m.content })),
+    ];
+
+    const result = await chatCompletion({
+      messages: chatMessages,
+      maxTokens: 400,
       temperature: 0.8,
     });
 
-    const reply = completion.choices[0]?.message?.content ?? "I'm here to help! How can I assist you today?";
+    const reply = result.content || "I'm here to help! How can I assist you today?";
     return NextResponse.json({ reply });
   } catch (error) {
     console.error("Support chat error:", error);

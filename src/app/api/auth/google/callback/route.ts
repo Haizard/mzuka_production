@@ -3,30 +3,22 @@ import { cookies } from "next/headers";
 import { prisma } from "@/lib/db";
 import { createUserSession } from "@/lib/auth";
 
-function getBaseUrl() {
-  const envUrl =
-    process.env.NEXTAUTH_URL ||
-    process.env.AUTH_URL ||
-    process.env.NEXT_PUBLIC_APP_URL ||
-    process.env.NEXT_PUBLIC_BASE_URL;
-  if (envUrl) return envUrl.replace(/\/$/, "");
-  if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`;
-  return "http://localhost:3000";
-}
-
 // GET /api/auth/google/callback — exchange code for tokens, find/create user, sign in
 export async function GET(req: NextRequest) {
+  // Use the request's own origin — always correct, no env vars needed
+  const origin = req.nextUrl.origin;
+
   const { searchParams } = new URL(req.url);
   const code = searchParams.get("code");
   const state = searchParams.get("state");
   const error = searchParams.get("error");
 
   if (error) {
-    return NextResponse.redirect(`${getBaseUrl()}/login?error=google_cancelled`);
+    return NextResponse.redirect(`${origin}/login?error=google_cancelled`);
   }
 
   if (!code || !state) {
-    return NextResponse.redirect(`${getBaseUrl()}/login?error=google_failed`);
+    return NextResponse.redirect(`${origin}/login?error=google_failed`);
   }
 
   // Validate CSRF state
@@ -34,7 +26,7 @@ export async function GET(req: NextRequest) {
   const savedState = cookieStore.get("google_oauth_state")?.value;
 
   if (!savedState || savedState !== state) {
-    return NextResponse.redirect(`${getBaseUrl()}/login?error=google_failed`);
+    return NextResponse.redirect(`${origin}/login?error=google_failed`);
   }
 
   cookieStore.delete("google_oauth_state");
@@ -43,11 +35,11 @@ export async function GET(req: NextRequest) {
   const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
 
   if (!clientId || !clientSecret) {
-    return NextResponse.redirect(`${getBaseUrl()}/login?error=google_failed`);
+    return NextResponse.redirect(`${origin}/login?error=google_failed`);
   }
 
-  const base = getBaseUrl();
-  const redirectUri = `${base}/api/auth/google/callback`;
+  // Use the request origin for the redirect URI (must match what Google Console expects)
+  const redirectUri = `${origin}/api/auth/google/callback`;
 
   try {
     // Exchange authorization code for tokens
@@ -65,7 +57,7 @@ export async function GET(req: NextRequest) {
 
     if (!tokenRes.ok) {
       console.error("[google-auth] token exchange failed:", tokenRes.status);
-      return NextResponse.redirect(`${getBaseUrl()}/login?error=google_failed`);
+      return NextResponse.redirect(`${origin}/login?error=google_failed`);
     }
 
     const tokens = await tokenRes.json();
@@ -78,7 +70,7 @@ export async function GET(req: NextRequest) {
 
     if (!profileRes.ok) {
       console.error("[google-auth] profile fetch failed:", profileRes.status);
-      return NextResponse.redirect(`${getBaseUrl()}/login?error=google_failed`);
+      return NextResponse.redirect(`${origin}/login?error=google_failed`);
     }
 
     const profile = await profileRes.json();
@@ -86,7 +78,7 @@ export async function GET(req: NextRequest) {
     const name = profile.name || email?.split("@")[0] || "Google User";
 
     if (!email) {
-      return NextResponse.redirect(`${getBaseUrl()}/login?error=google_failed`);
+      return NextResponse.redirect(`${origin}/login?error=google_failed`);
     }
 
     // Find existing user by email
@@ -128,32 +120,31 @@ export async function GET(req: NextRequest) {
 
     // Redirect based on role and approval (mirrors loginAction logic)
     if (user.approvalStatus === "DEACTIVATED") {
-      return NextResponse.redirect(`${getBaseUrl()}/login?error=account-deactivated`);
+      return NextResponse.redirect(`${origin}/login?error=account-deactivated`);
     }
     if (user.approvalStatus === "REJECTED") {
-      return NextResponse.redirect(`${getBaseUrl()}/login?error=account-rejected`);
+      return NextResponse.redirect(`${origin}/login?error=account-rejected`);
     }
     if (user.approvalStatus !== "APPROVED") {
-      return NextResponse.redirect(`${getBaseUrl()}/pending-approval`);
+      return NextResponse.redirect(`${origin}/pending-approval`);
     }
     if (["FOUNDER", "ADMIN"].includes(user.role)) {
-      return NextResponse.redirect(`${getBaseUrl()}/admin`);
+      return NextResponse.redirect(`${origin}/admin`);
     }
     if (user.role === "STAFF") {
-      // Admin-side staff roles → admin panel; field staff → staff portal
       const fullUser = await prisma.user.findUnique({
         where: { id: user.id },
         select: { staffRole: true },
       });
       const adminStaffRoles = ["ADMIN", "PRODUCTION_MANAGER", "COORDINATOR", "HUMAN_RESOURCE"];
       if (fullUser?.staffRole && adminStaffRoles.includes(fullUser.staffRole)) {
-        return NextResponse.redirect(`${getBaseUrl()}/admin`);
+        return NextResponse.redirect(`${origin}/admin`);
       }
-      return NextResponse.redirect(`${getBaseUrl()}/staff`);
+      return NextResponse.redirect(`${origin}/staff`);
     }
-    return NextResponse.redirect(`${getBaseUrl()}/client`);
+    return NextResponse.redirect(`${origin}/client`);
   } catch (err) {
     console.error("[google-auth] unexpected error:", err);
-    return NextResponse.redirect(`${getBaseUrl()}/login?error=google_failed`);
+    return NextResponse.redirect(`${origin}/login?error=google_failed`);
   }
 }
