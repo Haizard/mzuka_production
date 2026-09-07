@@ -1,10 +1,6 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
-import OpenAI from "openai";
-
-function getOpenAI() {
-  return new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-}
+import { chatCompletion } from "@/lib/ai-client";
 
 function buildSystemPrompt(role: string, staffRole: string | null): string {
   const base = `You are the MG Platform Assistant for Muzuka Gilbert — a luxury photography and videography studio platform.
@@ -153,18 +149,16 @@ export async function POST(req: Request) {
   const { messages } = await req.json();
   if (!Array.isArray(messages)) return NextResponse.json({ error: "messages array required" }, { status: 400 });
 
-  const openai = getOpenAI();
   const systemPrompt = buildSystemPrompt(user.role, user.staffRole ?? null);
 
-  const completion = await openai.chat.completions.create({
-    model: "gpt-4o-mini",
+  const completion = await chatCompletion({
     messages: [
       { role: "system", content: systemPrompt },
       ...messages.slice(-20),
     ],
-    max_tokens: 600,
+    maxTokens: 600,
   });
 
-  const reply = completion.choices[0]?.message?.content ?? "I'm here to help! What would you like to know?";
+  const reply = completion.content || "I'm here to help! What would you like to know?";
   return NextResponse.json({ reply });
 }

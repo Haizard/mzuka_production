@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import OpenAI from "openai";
+import { chatCompletion } from "@/lib/ai-client";
 import { requireAdminAccess } from "@/lib/admin-permissions";
 
 export async function POST(req: NextRequest) {
@@ -11,10 +11,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "prompt required" }, { status: 400 });
     }
 
-    const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-
-    const res = await openai.chat.completions.create({
-      model: "gpt-4o",
+    const res = await chatCompletion({
       messages: [
         {
           role: "system",
@@ -24,7 +21,7 @@ export async function POST(req: NextRequest) {
       ],
     });
 
-    return NextResponse.json({ content: res.choices[0]?.message?.content ?? "" });
+    return NextResponse.json({ content: res.content || "" });
   } catch (error) {
     console.error("AI report error:", error);
     return NextResponse.json({ error: "Failed to generate report" }, { status: 500 });

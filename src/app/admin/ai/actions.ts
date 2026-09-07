@@ -2,12 +2,8 @@
 
 import { requireAdminAccess } from "@/lib/admin-permissions";
 import { prisma } from "@/lib/db";
-import OpenAI from "openai";
+import { chatCompletion } from "@/lib/ai-client";
 import { nanoid } from "nanoid";
-
-function getOpenAI() {
-  return new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-}
 
 function cuid() { return nanoid(25); }
 
@@ -37,18 +33,16 @@ Always sign off creative content with [MG] Muzuka Gilbert branding when appropri
 export async function createChatAction(firstMessage: string) {
   try {
     const admin = await requireAiAccess();
-    const openai = getOpenAI();
 
     // Auto-generate a short title from the first message
-    const titleRes = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
+    const titleResult = await chatCompletion({
       messages: [
         { role: "system", content: "Generate a very short (4 words max) title for this chat based on the user's first message. Return only the title, no quotes." },
         { role: "user", content: firstMessage },
       ],
-      max_tokens: 20,
+      maxTokens: 20,
     });
-    const title = titleRes.choices[0]?.message?.content?.trim() ?? "New Chat";
+    const title = titleResult.content.trim() ?? "New Chat";
 
     const chat = await prisma.aiChat.create({
       data: {
@@ -66,12 +60,11 @@ export async function createChatAction(firstMessage: string) {
     });
 
     // Get AI reply
-    const completion = await openai.chat.completions.create({
-      model: "gpt-4o",
+    const completion = await chatCompletion({
       messages: chat.messages.map((m) => ({ role: m.role as "system" | "user" | "assistant", content: m.content })),
     });
 
-    const reply = completion.choices[0]?.message?.content ?? "I'm here to help.";
+    const reply = completion.content || "I'm here to help.";
 
     await prisma.aiMessage.create({
       data: { id: cuid(), chatId: chat.id, role: "assistant", content: reply },
@@ -87,7 +80,6 @@ export async function createChatAction(firstMessage: string) {
 export async function sendMessageAction(chatId: string, content: string) {
   try {
     const admin = await requireAiAccess();
-    const openai = getOpenAI();
 
     const chat = await prisma.aiChat.findFirst({
       where: { id: chatId, userId: admin.id },
@@ -106,12 +98,11 @@ export async function sendMessageAction(chatId: string, content: string) {
       orderBy: { createdAt: "asc" },
     });
 
-    const completion = await openai.chat.completions.create({
-      model: "gpt-4o",
+    const completion = await chatCompletion({
       messages: messages.map((m) => ({ role: m.role as "system" | "user" | "assistant", content: m.content })),
     });
 
-    const reply = completion.choices[0]?.message?.content ?? "I'm here to help.";
+    const reply = completion.content || "I'm here to help.";
 
     await prisma.aiMessage.create({
       data: { id: cuid(), chatId, role: "assistant", content: reply },
@@ -179,22 +170,20 @@ export async function generateCaptionAction(data: {
 }) {
   try {
     await requireAiAccess();
-    const openai = getOpenAI();
 
     const prompt = `Write a ${data.tone} social media caption for ${data.platform} about: ${data.subject}.
 ${data.hashtags ? "Include 5-8 relevant hashtags at the end." : "No hashtags."}
 Brand: Muzuka Gilbert — luxury photography & videography studio.
 Brand voice: cinematic, powerful, luxury, emotional.`;
 
-    const res = await openai.chat.completions.create({
-      model: "gpt-4o",
+    const res = await chatCompletion({
       messages: [
         { role: "system", content: MG_SYSTEM_PROMPT },
         { role: "user",   content: prompt },
       ],
     });
 
-    return { success: true, content: res.choices[0]?.message?.content ?? "" };
+    return { success: true, content: res.content || "" };
   } catch (error) {
     console.error("Caption generation failed:", error);
     return { success: false, error: "Failed to generate caption", content: "" };
@@ -206,22 +195,20 @@ export async function generateScriptAction(data: {
 }) {
   try {
     await requireAiAccess();
-    const openai = getOpenAI();
 
     const prompt = `Write a ${data.duration} ${data.type} script about: ${data.topic}.
 Style: ${data.style}.
 Format with clear sections: Hook, Body, Call to Action.
 Brand: Muzuka Gilbert — luxury photography & videography.`;
 
-    const res = await openai.chat.completions.create({
-      model: "gpt-4o",
+    const res = await chatCompletion({
       messages: [
         { role: "system", content: MG_SYSTEM_PROMPT },
         { role: "user",   content: prompt },
       ],
     });
 
-    return { success: true, content: res.choices[0]?.message?.content ?? "" };
+    return { success: true, content: res.content || "" };
   } catch (error) {
     console.error("Script generation failed:", error);
     return { success: false, error: "Failed to generate script", content: "" };
@@ -233,17 +220,15 @@ export async function translateContentAction(data: {
 }) {
   try {
     await requireAiAccess();
-    const openai = getOpenAI();
 
-    const res = await openai.chat.completions.create({
-      model: "gpt-4o",
+    const res = await chatCompletion({
       messages: [
         { role: "system", content: "You are a professional translator. Preserve tone, formatting, and brand voice." },
         { role: "user",   content: `Translate the following to ${data.targetLanguage}:\n\n${data.content}` },
       ],
     });
 
-    return { success: true, content: res.choices[0]?.message?.content ?? "" };
+    return { success: true, content: res.content || "" };
   } catch (error) {
     console.error("Translation failed:", error);
     return { success: false, error: "Failed to translate", content: "" };
@@ -253,17 +238,15 @@ export async function translateContentAction(data: {
 export async function summarizeContentAction(content: string) {
   try {
     await requireAiAccess();
-    const openai = getOpenAI();
 
-    const res = await openai.chat.completions.create({
-      model: "gpt-4o",
+    const res = await chatCompletion({
       messages: [
         { role: "system", content: "Summarize clearly and concisely. Use bullet points for key facts." },
         { role: "user",   content: `Summarize this:\n\n${content}` },
       ],
     });
 
-    return { success: true, content: res.choices[0]?.message?.content ?? "" };
+    return { success: true, content: res.content || "" };
   } catch (error) {
     console.error("Summarization failed:", error);
     return { success: false, error: "Failed to summarize", content: "" };
