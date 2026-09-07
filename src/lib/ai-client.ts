@@ -5,10 +5,10 @@
  * across all Bedrock models (DeepSeek, Claude, Titan, Llama, etc.)
  *
  * Environment variables:
- *   AWS_ACCESS_KEY_ID     — AWS access key
- *   AWS_SECRET_ACCESS_KEY — AWS secret key
- *   AWS_BEDROCK_REGION    — AWS region (e.g. us-east-1)
- *   AWS_BEDROCK_MODEL_ID  — Model ID (e.g. deepseek.v3-v1:0)
+ *   BEDROCK_ACCESS_KEY_ID     — AWS access key for Bedrock
+ *   BEDROCK_SECRET_ACCESS_KEY — AWS secret key for Bedrock
+ *   AWS_BEDROCK_REGION         — AWS region (e.g. us-east-1)
+ *   AWS_BEDROCK_MODEL_ID       — Model ID (e.g. deepseek.v3-v1:0)
  *
  * Recommended models for customer service:
  *   deepseek.v3-v1:0          — DeepSeek V3.1 (fast, light, cost-effective)
@@ -31,11 +31,11 @@ function getClient(): BedrockRuntimeClient {
   if (client) return client;
 
   const region = process.env.AWS_BEDROCK_REGION || "us-east-1";
-  const accessKeyId = process.env.AWS_ACCESS_KEY_ID;
-  const secretAccessKey = process.env.AWS_SECRET_ACCESS_KEY;
+  const accessKeyId = process.env.BEDROCK_ACCESS_KEY_ID;
+  const secretAccessKey = process.env.BEDROCK_SECRET_ACCESS_KEY;
 
   if (!accessKeyId || !secretAccessKey) {
-    throw new Error("AWS_BEDROCK credentials not configured. Set AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY.");
+    throw new Error("AWS_BEDROCK credentials not configured. Set BEDROCK_ACCESS_KEY_ID and BEDROCK_SECRET_ACCESS_KEY.");
   }
 
   client = new BedrockRuntimeClient({
