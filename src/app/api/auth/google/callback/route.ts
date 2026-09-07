@@ -1,158 +1,147 @@
 import { NextRequest, NextResponse } from "next/server";
+import { cookies } from "next/headers";
 import { prisma } from "@/lib/db";
 import { createUserSession } from "@/lib/auth";
-import { sendWelcomeMessage, sendApprovalMessage } from "@/lib/messages";
-import { nanoid } from "nanoid";
 
-const GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token";
-const GOOGLE_USERINFO_URL = "https://www.googleapis.com/oauth2/v2/userinfo";
-
-function getBaseUrl(req: NextRequest) {
-  const host = req.headers.get("host") ?? "localhost:3000";
-  const proto = host.includes("localhost") ? "http" : "https";
-  return `${proto}://${host}`;
+function getBaseUrl() {
+  const envUrl =
+    process.env.NEXTAUTH_URL ||
+    process.env.AUTH_URL ||
+    process.env.NEXT_PUBLIC_APP_URL ||
+    process.env.NEXT_PUBLIC_BASE_URL;
+  if (envUrl) return envUrl.replace(/\/$/, "");
+  if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`;
+  return "http://localhost:3000";
 }
 
-interface GoogleUser {
-  id: string;
-  email: string;
-  name: string;
-  picture: string;
-  verified_email: boolean;
-}
-
+// GET /api/auth/google/callback — exchange code for tokens, find/create user, sign in
 export async function GET(req: NextRequest) {
-  const base = getBaseUrl(req);
   const { searchParams } = new URL(req.url);
-  const code  = searchParams.get("code");
+  const code = searchParams.get("code");
+  const state = searchParams.get("state");
   const error = searchParams.get("error");
 
-  if (error || !code) {
-    return NextResponse.redirect(`${base}/login?error=google_cancelled`);
+  if (error) {
+    return NextResponse.redirect(`${getBaseUrl()}/login?error=google_cancelled`);
   }
 
-  try {
-    const clientId     = process.env.GOOGLE_CLIENT_ID!;
-    const clientSecret = process.env.GOOGLE_CLIENT_SECRET!;
-    const redirectUri  = `${base}/api/auth/google/callback`;
+  if (!code || !state) {
+    return NextResponse.redirect(`${getBaseUrl()}/login?error=google_failed`);
+  }
 
-    // Exchange code for tokens
-    const tokenRes = await fetch(GOOGLE_TOKEN_URL, {
+  // Validate CSRF state
+  const cookieStore = await cookies();
+  const savedState = cookieStore.get("google_oauth_state")?.value;
+
+  if (!savedState || savedState !== state) {
+    return NextResponse.redirect(`${getBaseUrl()}/login?error=google_failed`);
+  }
+
+  cookieStore.delete("google_oauth_state");
+
+  const clientId = process.env.GOOGLE_CLIENT_ID;
+  const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
+
+  if (!clientId || !clientSecret) {
+    return NextResponse.redirect(`${getBaseUrl()}/login?error=google_failed`);
+  }
+
+  const base = getBaseUrl();
+  const redirectUri = `${base}/api/auth/google/callback`;
+
+  try {
+    // Exchange authorization code for tokens
+    const tokenRes = await fetch("https://oauth2.googleapis.com/token", {
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
       body: new URLSearchParams({
         code,
-        client_id:     clientId,
+        client_id: clientId,
         client_secret: clientSecret,
-        redirect_uri:  redirectUri,
-        grant_type:    "authorization_code",
+        redirect_uri: redirectUri,
+        grant_type: "authorization_code",
       }),
     });
 
-    const tokens = await tokenRes.json() as { access_token?: string; error?: string };
-    if (!tokens.access_token) {
-      console.error("Google token exchange failed:", tokens);
-      return NextResponse.redirect(`${base}/login?error=google_token`);
+    if (!tokenRes.ok) {
+      console.error("[google-auth] token exchange failed:", tokenRes.status);
+      return NextResponse.redirect(`${getBaseUrl()}/login?error=google_failed`);
     }
 
-    // Fetch Google user info
-    const userRes = await fetch(GOOGLE_USERINFO_URL, {
-      headers: { Authorization: `Bearer ${tokens.access_token}` },
-    });
-    const googleUser = await userRes.json() as GoogleUser;
+    const tokens = await tokenRes.json();
 
-    if (!googleUser.email) {
-      return NextResponse.redirect(`${base}/login?error=google_no_email`);
+    // Fetch user profile from Google
+    const profileRes = await fetch(
+      "https://www.googleapis.com/oauth2/v2/userinfo",
+      { headers: { Authorization: `Bearer ${tokens.access_token}` } }
+    );
+
+    if (!profileRes.ok) {
+      console.error("[google-auth] profile fetch failed:", profileRes.status);
+      return NextResponse.redirect(`${getBaseUrl()}/login?error=google_failed`);
     }
 
-    // Find or create user
+    const profile = await profileRes.json();
+    const email = profile.email?.toLowerCase();
+    const name = profile.name || email?.split("@")[0] || "Google User";
+
+    if (!email) {
+      return NextResponse.redirect(`${getBaseUrl()}/login?error=google_failed`);
+    }
+
+    // Find existing user by email
     let user = await prisma.user.findUnique({
-      where: { email: googleUser.email.toLowerCase() },
-      select: { id: true, role: true, approvalStatus: true, name: true, email: true, phone: true },
+      where: { email },
+      select: { id: true, role: true, approvalStatus: true },
     });
-
-    const isNewUser = !user;
 
     if (!user) {
-      // New Google user — auto-approve as CLIENT immediately
+      // New user — create account
+      const userCount = await prisma.user.count();
+      const isFirstUser = userCount === 0;
+
       user = await prisma.user.create({
         data: {
-          id:             nanoid(25),
-          name:           googleUser.name || googleUser.email.split("@")[0],
-          email:          googleUser.email.toLowerCase(),
-          role:           "CLIENT",
-          approvalStatus: "APPROVED", // ← auto-approved via Google
-          emailVerifiedAt: new Date(),
+          name,
+          email,
+          role: isFirstUser ? "FOUNDER" : "CLIENT",
+          approvalStatus: isFirstUser ? "APPROVED" : "PENDING",
         },
-        select: { id: true, role: true, approvalStatus: true, name: true, email: true, phone: true },
+        select: { id: true, role: true, approvalStatus: true },
       });
 
+      // Create approval record
       await prisma.clientApproval.create({
         data: {
-          clientId:  user.id,
-          status:    "APPROVED",
-          decidedAt: new Date(),
-          notes:     "Auto-approved via Google OAuth sign-in.",
+          clientId: user.id,
+          status: user.approvalStatus,
+          decidedAt: user.approvalStatus === "APPROVED" ? new Date() : null,
+          notes: isFirstUser
+            ? "First registered user becomes the approved founder account."
+            : "Google sign-in registration — awaiting admin approval.",
         },
       });
-
-      await prisma.auditLog.create({
-        data: {
-          actorId:  user.id,
-          action:   "LOGIN",
-          entity:   "User",
-          entityId: user.id,
-          metadata: { provider: "google", email: googleUser.email },
-        },
-      });
-
-      // Send welcome + approval messages non-blocking
-      sendWelcomeMessage({ id: user.id, name: user.name, email: user.email, phone: user.phone })
-        .catch((e) => console.error("[google-oauth] welcome:", e));
-      sendApprovalMessage({ id: user.id, name: user.name, email: user.email, phone: user.phone })
-        .catch((e) => console.error("[google-oauth] approval:", e));
-
-    } else if (user.approvalStatus === "PENDING") {
-      // Existing user who was pending — auto-approve them now via Google verification
-      await prisma.user.update({
-        where: { id: user.id },
-        data: { approvalStatus: "APPROVED", emailVerifiedAt: new Date() },
-      });
-      await prisma.clientApproval.updateMany({
-        where: { clientId: user.id },
-        data: { status: "APPROVED", decidedAt: new Date(), notes: "Auto-approved via Google OAuth." },
-      });
-      user = { ...user, approvalStatus: "APPROVED" };
-
-      sendApprovalMessage({ id: user.id, name: user.name, email: user.email, phone: user.phone })
-        .catch((e) => console.error("[google-oauth] approval:", e));
     }
 
-    // Create session using existing auth system
+    // Create session
     await createUserSession(user.id);
 
-    // Redirect based on role
+    // Redirect based on role and approval
+    if (user.approvalStatus === "DEACTIVATED") {
+      return NextResponse.redirect(`${getBaseUrl()}/login?error=account-deactivated`);
+    }
+    if (user.approvalStatus === "REJECTED") {
+      return NextResponse.redirect(`${getBaseUrl()}/login?error=account-rejected`);
+    }
+    if (user.approvalStatus !== "APPROVED") {
+      return NextResponse.redirect(`${getBaseUrl()}/pending-approval`);
+    }
     if (["FOUNDER", "ADMIN"].includes(user.role)) {
-      return NextResponse.redirect(`${base}/admin`);
+      return NextResponse.redirect(`${getBaseUrl()}/admin`);
     }
-
-    if (user.role === "STAFF") {
-      // Fetch staffRole to determine correct destination
-      const staffUser = await prisma.user.findUnique({
-        where: { id: user.id },
-        select: { staffRole: true },
-      });
-      const adminStaffRoles = ["ADMIN", "PRODUCTION_MANAGER", "COORDINATOR", "HUMAN_RESOURCE"];
-      if (staffUser?.staffRole && adminStaffRoles.includes(staffUser.staffRole)) {
-        return NextResponse.redirect(`${base}/admin`);
-      }
-      return NextResponse.redirect(`${base}/staff`);
-    }
-
-    return NextResponse.redirect(`${base}/client`);
-
+    return NextResponse.redirect(`${getBaseUrl()}/client`);
   } catch (err) {
-    console.error("[google-oauth] callback error:", err);
-    return NextResponse.redirect(`${base}/login?error=google_failed`);
+    console.error("[google-auth] unexpected error:", err);
+    return NextResponse.redirect(`${getBaseUrl()}/login?error=google_failed`);
   }
 }
