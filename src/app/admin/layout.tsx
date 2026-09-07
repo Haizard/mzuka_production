@@ -6,7 +6,7 @@ import {
   DollarSign, Receipt, TrendingDown, FileText,
   Bot, BarChart2, ImageIcon, ClipboardList,
   BookOpen, Users, Scale, Crown, Wrench, RotateCcw, Wallet, LogOut,
-  MessageSquare, Video, CalendarOff, ClipboardCheck, Award,
+  MessageSquare, Video,  CalendarOff, ClipboardCheck, Award, Brain,
 } from "lucide-react";
 import { requireAdmin } from "@/lib/auth";
 import { ADMIN_NAV_ITEMS } from "@/lib/admin-permissions";
@@ -49,6 +49,7 @@ const ALL_NAV: Array<{
   { ...ADMIN_NAV_ITEMS[25], icon: CalendarOff },
   { ...ADMIN_NAV_ITEMS[26], icon: ClipboardCheck },
   { ...ADMIN_NAV_ITEMS[27], icon: Award },
+  { ...ADMIN_NAV_ITEMS[28], icon: Brain },
 ];
 
 type NavItem = { href: string; label: string; icon: React.ComponentType<{ className?: string }>; roles: readonly string[] | null };

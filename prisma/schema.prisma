@@ -128,6 +128,9 @@ model User {
   onboardingTasks    OnboardingTask[]     @relation("OnboardingStaff")
   commissions        StaffCommission[]    @relation("CommissionStaff")
   commissionApprovals StaffCommission[]   @relation("CommissionApprover")
+  inAppNotifications InAppNotification[] @relation("InAppNotifUser")
+  clientMemory       ClientMemory?       @relation("ClientMemoryUser")
+  notifPrefs         NotificationPreference? @relation("NotifPrefUser")
 }
 
 model ClientApproval {
@@ -750,6 +753,53 @@ model StaffCommission {
   @@index([bookingId])
 }
 
-// ── HR: Update AuditAction enum ──────────────────────────────────────────────
-// GALLERY_PERMISSIONS_CHANGED is used by security actions
-// (GALLERY_VIEWED remains for actual gallery views)
+// ── In-App Notifications ──────────────────────────────────────────────────
+
+model InAppNotification {
+  id        String   @id @default(cuid())
+  userId    String
+  type      String   // "booking_confirmed" | "payment_received" | "gallery_ready" | "reminder" | "system"
+  title     String
+  body      String
+  link      String?  // optional deep-link URL
+  readAt    DateTime?
+  createdAt DateTime @default(now())
+  user      User     @relation("InAppNotifUser", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, readAt])
+  @@index([userId, createdAt])
+}
+
+// ── Client Memory / Preferences ─────────────────────────────────────────────
+
+model ClientMemory {
+  id             String    @id @default(cuid())
+  clientId       String    @unique
+  preferredName  String?   // how the client likes to be addressed
+  birthday       DateTime?
+  anniversary    DateTime?
+  preferredContact String? @default("email") // "email" | "sms" | "whatsapp"
+  notes          String?   // free-form admin notes about the client
+  preferences    Json?     // structured: { favoriteStyles, favoriteColors, preferredMood, etc. }
+  totalSessions  Int       @default(0)
+  totalSpentCents Int      @default(0)
+  lastSessionAt  DateTime?
+  lastContactAt  DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  client         User      @relation("ClientMemoryUser", fields: [clientId], references: [id], onDelete: Cascade)
+}
+
+model NotificationPreference {
+  id               String   @id @default(cuid())
+  userId           String   @unique
+  emailEnabled     Boolean  @default(true)
+  smsEnabled       Boolean  @default(true)
+  whatsappEnabled  Boolean  @default(true)
+  pushEnabled      Boolean  @default(true)
+  // Per-type overrides stored as JSON: { "booking_confirmed": true, ... }
+  typeOverrides    Json?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  user             User     @relation("NotifPrefUser", fields: [userId], references: [id], onDelete: Cascade)
+}

@@ -133,21 +133,53 @@ function bestPhone(r: Recipient): string | null {
 /**
  * Send to all available channels for a recipient.
  * Email is always attempted. SMS + WhatsApp only if a phone is available.
+ * Also creates an in-app notification and checks user preferences.
  */
 async function notifyAll(
   recipient: Recipient,
   subject: string,
   html: string,
   smsBody: string,
-  opts: { whatsApp?: boolean } = {},
+  opts: { whatsApp?: boolean; inAppType?: string; inAppLink?: string } = {},
 ): Promise<void> {
   const phone = bestPhone(recipient);
-  await sendEmail(recipient.id, recipient.email, subject, html);
+
+  // Check notification preferences
+  let prefs: { emailEnabled: boolean; smsEnabled: boolean; whatsappEnabled: boolean; typeOverrides: any } | null = null;
+  try {
+    prefs = await prisma.notificationPreference.findUnique({ where: { userId: recipient.id } }) as any;
+  } catch { /* preferences not set yet — send everything */ }
+
+  const typeAllowed = !prefs?.typeOverrides || !(opts.inAppType && opts.inAppType in (prefs.typeOverrides ?? {})) || (prefs.typeOverrides as Record<string, boolean>)[opts.inAppType!] !== false;
+
+  // Email
+  if (!prefs || prefs.emailEnabled !== false) {
+    await sendEmail(recipient.id, recipient.email, subject, html);
+  }
+
+  // SMS + WhatsApp (always send both when phone is available)
   if (phone) {
-    await sendSms(recipient.id, phone, smsBody);
-    if (opts.whatsApp) {
+    if (!prefs || prefs.smsEnabled !== false) {
+      await sendSms(recipient.id, phone, smsBody);
+    }
+    if (!prefs || prefs.whatsappEnabled !== false) {
       await sendWhatsApp(recipient.id, phone, smsBody);
     }
+  }
+
+  // In-app notification
+  if (typeAllowed) {
+    try {
+      await prisma.inAppNotification.create({
+        data: {
+          userId: recipient.id,
+          type: opts.inAppType ?? "system",
+          title: subject.replace(/[✅📅🖼️⏰💳📌⚠️⭐👋🎉]/g, "").trim(),
+          body: smsBody,
+          link: opts.inAppLink ?? null,
+        },
+      });
+    } catch { /* non-critical */ }
   }
 }
 
@@ -177,7 +209,7 @@ export async function notifyApproved(r: Recipient): Promise<void> {
     ${ctaBtn("Log In & Book Now", `${BASE_URL}/login`)}
   `);
   const sms = `Hi ${r.name}, your Muzuka Gilbert account is approved! Log in and book: ${BASE_URL}/login 🎉`;
-  await notifyAll(r, subject, html, sms, { whatsApp: true });
+  await notifyAll(r, subject, html, sms, { whatsApp: true, inAppType: "system", inAppLink: "/login" });
 }
 
 // ── 3. Account rejected ──────────────────────────────────────────────────────
@@ -222,7 +254,7 @@ export async function notifyBookingConfirmed(r: Recipient, b: BookingDetails): P
     ${ctaBtn("View My Booking", `${BASE_URL}/client/bookings/${b.bookingId}`)}
   `);
   const sms = `[MG] Booking confirmed: ${b.title} on ${dateStr} at ${timeStr}${b.location ? ` @ ${b.location}` : ""}. See you soon! 📸`;
-  await notifyAll(r, subject, html, sms, { whatsApp: true });
+  await notifyAll(r, subject, html, sms, { whatsApp: true, inAppType: "booking_confirmed", inAppLink: `/client/bookings/${b.bookingId}` });
 }
 
 // ── 5. Payment received ──────────────────────────────────────────────────────
@@ -242,7 +274,7 @@ export async function notifyPaymentReceived(
     ${ctaBtn("View My Bookings", `${BASE_URL}/client/bookings`)}
   `);
   const sms = `[MG] Payment of ${amount} confirmed for ${b.title}. Your gallery will be ready after your session. Thank you! 🙏`;
-  await notifyAll(r, subject, html, sms);
+  await notifyAll(r, subject, html, sms, { whatsApp: true, inAppType: "payment_received", inAppLink: `/client/bookings/${b.bookingId}` });
 }
 
 // ── 6. Gallery ready ─────────────────────────────────────────────────────────
@@ -265,7 +297,7 @@ export async function notifyGalleryReady(
     ${ctaBtn("View Gallery", galleryUrl)}
   `);
   const sms = `[MG] Your gallery "${g.title}" is ready! ${g.isPaid ? "Full download unlocked 🎬" : "Preview now — pay to unlock full quality"}: ${galleryUrl}`;
-  await notifyAll(r, subject, html, sms, { whatsApp: true });
+  await notifyAll(r, subject, html, sms, { whatsApp: true, inAppType: "gallery_ready", inAppLink: galleryUrl });
 }
 
 // ── 7. Event reminder ────────────────────────────────────────────────────────
@@ -291,7 +323,7 @@ export async function notifyEventReminder(
     ${ctaBtn("View Booking", `${BASE_URL}/client/bookings/${b.bookingId}`)}
   `);
   const sms = `[MG] Reminder: "${b.title}" is ${when} — ${fmtDate(b.scheduledAt)} at ${fmtTime(b.scheduledAt)}${b.location ? ` @ ${b.location}` : ""}. See you soon! 📸`;
-  await notifyAll(r, subject, html, sms, { whatsApp: true });
+  await notifyAll(r, subject, html, sms, { whatsApp: true, inAppType: "event_reminder", inAppLink: `/client/bookings/${b.bookingId}` });
 }
 
 // ── 8. Payment due reminder ──────────────────────────────────────────────────
@@ -310,7 +342,7 @@ export async function notifyPaymentDue(
     ${ctaBtn("Complete Payment", `${BASE_URL}/client/bookings/${b.bookingId}`)}
   `);
   const sms = `[MG] Payment reminder: ${amount} due ${dueStr} for "${b.title}". Pay now: ${BASE_URL}/client/bookings/${b.bookingId}`;
-  await notifyAll(r, subject, html, sms, { whatsApp: true });
+  await notifyAll(r, subject, html, sms, { whatsApp: true, inAppType: "payment_due", inAppLink: `/client/bookings/${b.bookingId}` });
 }
 
 // ── 9. Deposit due ───────────────────────────────────────────────────────────
@@ -328,7 +360,7 @@ export async function notifyDepositDue(
     ${ctaBtn("Pay Deposit Now", `${BASE_URL}/client/bookings/${b.bookingId}`)}
   `);
   const sms = `[MG] Deposit of ${amount} required to confirm "${b.title}" on ${fmtDate(b.scheduledAt)}. Pay: ${BASE_URL}/client/bookings/${b.bookingId}`;
-  await notifyAll(r, subject, html, sms, { whatsApp: true });
+  await notifyAll(r, subject, html, sms, { whatsApp: true, inAppType: "deposit_due", inAppLink: `/client/bookings/${b.bookingId}` });
 }
 
 // ── 10. Gallery expiring ─────────────────────────────────────────────────────
@@ -346,7 +378,7 @@ export async function notifyGalleryExpiring(
     ${ctaBtn("Download Now", galleryUrl)}
   `);
   const sms = `[MG] Your gallery "${g.title}" expires in ${g.daysLeft} day${g.daysLeft !== 1 ? "s" : ""}! Download now: ${galleryUrl}`;
-  await notifyAll(r, subject, html, sms, { whatsApp: true });
+  await notifyAll(r, subject, html, sms, { whatsApp: true, inAppType: "gallery_expiring", inAppLink: galleryUrl });
 }
 
 // ── 11. Booking cancelled ────────────────────────────────────────────────────
@@ -364,7 +396,7 @@ export async function notifyBookingCancelled(
     ${ctaBtn("Book a New Session", `${BASE_URL}/client/bookings/new`)}
   `);
   const sms = `[MG] Your booking "${b.title}" on ${fmtDate(b.scheduledAt)} has been cancelled. ${b.reason ? `Reason: ${b.reason}. ` : ""}Book again: ${BASE_URL}/client/bookings/new`;
-  await notifyAll(r, subject, html, sms);
+  await notifyAll(r, subject, html, sms, { whatsApp: true, inAppType: "system" });
 }
 
 // ── 12. Review request ───────────────────────────────────────────────────────
@@ -383,7 +415,7 @@ export async function notifyReviewRequest(
     <p style="margin-top:20px;font-size:13px;color:#888;">"We don't just take pictures. We create masterpieces."</p>
   `);
   const sms = `[MG] Hi ${r.name}, how was your experience with "${b.title}"? We'd love your review: ${BASE_URL}/client ⭐`;
-  await notifyAll(r, subject, html, sms);
+  await notifyAll(r, subject, html, sms, { whatsApp: true, inAppType: "review_request", inAppLink: "/client" });
 }
 
 // ── HTML helpers ──────────────────────────────────────────────────────────────

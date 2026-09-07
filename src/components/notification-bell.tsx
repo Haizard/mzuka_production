@@ -3,18 +3,16 @@
 import { Bell } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { getUnreadCount } from "@/app/notifications/actions";
 
-export function NotificationBell({ href = "/admin/messages" }: { href?: string }) {
+export function NotificationBell({ href = "/notifications" }: { href?: string }) {
   const [count, setCount] = useState(0);
 
   useEffect(() => {
     async function fetchUnread() {
       try {
-        const res = await fetch("/api/dm/unread");
-        if (res.ok) {
-          const data = await res.json();
-          setCount(data.count ?? 0);
-        }
+        const data = await getUnreadCount();
+        if (data.success) setCount(data.count);
       } catch {}
     }
     fetchUnread();
@@ -26,7 +24,7 @@ export function NotificationBell({ href = "/admin/messages" }: { href?: string }
     <Link
       href={href}
       className="relative p-2 text-zinc-400 hover:text-white transition rounded-lg hover:bg-white/5"
-      title="Messages"
+      title="Notifications"
     >
       <Bell className="h-5 w-5" />
       {count > 0 && (
