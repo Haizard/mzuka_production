@@ -126,7 +126,7 @@ export async function GET(req: NextRequest) {
     // Create session
     await createUserSession(user.id);
 
-    // Redirect based on role and approval
+    // Redirect based on role and approval (mirrors loginAction logic)
     if (user.approvalStatus === "DEACTIVATED") {
       return NextResponse.redirect(`${getBaseUrl()}/login?error=account-deactivated`);
     }
@@ -138,6 +138,18 @@ export async function GET(req: NextRequest) {
     }
     if (["FOUNDER", "ADMIN"].includes(user.role)) {
       return NextResponse.redirect(`${getBaseUrl()}/admin`);
+    }
+    if (user.role === "STAFF") {
+      // Admin-side staff roles → admin panel; field staff → staff portal
+      const fullUser = await prisma.user.findUnique({
+        where: { id: user.id },
+        select: { staffRole: true },
+      });
+      const adminStaffRoles = ["ADMIN", "PRODUCTION_MANAGER", "COORDINATOR", "HUMAN_RESOURCE"];
+      if (fullUser?.staffRole && adminStaffRoles.includes(fullUser.staffRole)) {
+        return NextResponse.redirect(`${getBaseUrl()}/admin`);
+      }
+      return NextResponse.redirect(`${getBaseUrl()}/staff`);
     }
     return NextResponse.redirect(`${getBaseUrl()}/client`);
   } catch (err) {

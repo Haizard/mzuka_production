@@ -47,7 +47,7 @@ function getClient(): BedrockRuntimeClient {
 }
 
 function getModelId(): string {
-  return process.env.AWS_BEDROCK_MODEL_ID || "deepseek.v3-v1:0";
+  return process.env.AWS_BEDROCK_MODEL_ID || "us.deepseek.v3-v1:0";
 }
 
 // ── Chat completion interface ───────────────────────────────────────────────
@@ -126,7 +126,21 @@ export async function chatCompletion(options: ChatCompletionOptions): Promise<Ch
     },
   });
 
-  const response = await bedrock.send(command);
+  let response;
+  try {
+    response = await bedrock.send(command);
+  } catch (err: unknown) {
+    // If the model ID is invalid, log a helpful message
+    const msg = err instanceof Error ? err.message : String(err);
+    if (msg.includes("model identifier is invalid") || msg.includes("ValidationException")) {
+      console.error(
+        `[ai] Invalid model ID "${modelId}". Check your AWS_BEDROCK_MODEL_ID env var. ` +
+        `Valid options: us.deepseek.v3-v1:0, anthropic.claude-3-haiku-20240307-v1:0, ` +
+        `anthropic.claude-3-5-sonnet-20241022-v2:0, amazon.titan-text-express-v1`
+      );
+    }
+    throw err;
+  }
 
   const outputMessage = response.output?.message;
   const textContent = outputMessage?.content
