@@ -2,13 +2,18 @@
  * ai-client.ts — Centralized AWS Bedrock AI client for Muzuka Gilbert
  *
  * Uses the Bedrock Converse API which provides a unified interface
- * across all Bedrock models (Claude, Titan, Llama, etc.)
+ * across all Bedrock models (DeepSeek, Claude, Titan, Llama, etc.)
  *
  * Environment variables:
  *   AWS_ACCESS_KEY_ID     — AWS access key
  *   AWS_SECRET_ACCESS_KEY — AWS secret key
  *   AWS_BEDROCK_REGION    — AWS region (e.g. us-east-1)
- *   AWS_BEDROCK_MODEL_ID  — Model ID (e.g. anthropic.claude-3-5-sonnet-20241022-v2:0)
+ *   AWS_BEDROCK_MODEL_ID  — Model ID (e.g. deepseek.v3-v1:0)
+ *
+ * Recommended models for customer service:
+ *   deepseek.v3-v1:0          — DeepSeek V3.1 (fast, light, cost-effective)
+ *   anthropic.claude-3-haiku-20240307-v1:0 — Claude 3 Haiku (fast, high quality)
+ *   amazon.titan-text-express-v1 — Amazon Titan Express
  */
 
 import {
@@ -42,7 +47,7 @@ function getClient(): BedrockRuntimeClient {
 }
 
 function getModelId(): string {
-  return process.env.AWS_BEDROCK_MODEL_ID || "anthropic.claude-3-5-sonnet-20241022-v2:0";
+  return process.env.AWS_BEDROCK_MODEL_ID || "deepseek.v3-v1:0";
 }
 
 // ── Chat completion interface ───────────────────────────────────────────────
