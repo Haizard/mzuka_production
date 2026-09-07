@@ -2,7 +2,7 @@ import Link from "next/link";
 import {
   CalendarDays, GalleryHorizontalEnd, ShieldCheck, UserCheck,
   Users, Clapperboard, Package, DollarSign, Wrench, RotateCcw,
-  BarChart2, Camera, Video, BookOpen,
+  BarChart2, Camera, Video, BookOpen, CalendarOff, ClipboardCheck, Award,
 } from "lucide-react";
 import { requireAdminAccess } from "@/lib/admin-permissions";
 import { prisma } from "@/lib/db";
@@ -177,21 +177,28 @@ export default async function AdminPage() {
 
   // ── HUMAN RESOURCE ────────────────────────────────────────────────────────
   if (staffRole === "HUMAN_RESOURCE") {
-    const [staffCount, revenue] = await Promise.all([
+    const [staffCount, revenue, pendingLeave, pendingCommissions] = await Promise.all([
       prisma.user.count({ where: { role: "STAFF", approvalStatus: "APPROVED" } }),
       prisma.payment.aggregate({ where: { status: "PAID" }, _sum: { amountCents: true } }),
+      prisma.leaveRequest.count({ where: { status: "PENDING" } }),
+      prisma.staffCommission.count({ where: { status: "PENDING" } }),
     ]);
     return (
       <DashboardShell userName={user.name} roleName="Human Resource" roleColour="text-rose-300">
-        <div className="grid gap-4 grid-cols-2 mb-6">
+        <div className="grid gap-4 grid-cols-2 sm:grid-cols-4 mb-6">
           <Stat label="Staff Members" value={staffCount}                              colour="text-blue-400" />
           <Stat label="Total Revenue" value={usd(revenue._sum.amountCents ?? 0)}      colour="text-emerald-400" />
+          <Stat label="Pending Leave" value={pendingLeave}                            colour="text-amber-400" />
+          <Stat label="Pending Commissions" value={pendingCommissions}                 colour="text-violet-400" />
         </div>
         <QuickLinks links={[
-          { href: "/admin/employees",        icon: Users,      label: "Employees",  desc: "Manage staff and roles" },
-          { href: "/admin/payroll",          icon: DollarSign, label: "Payroll",    desc: "Payroll and compensation" },
-          { href: "/admin/finance",          icon: DollarSign, label: "Finance",    desc: "Invoices and expenses" },
-          { href: "/admin/analytics",        icon: BarChart2,  label: "Analytics",  desc: "Business reports" },
+          { href: "/admin/employees",        icon: Users,      label: "Employees",    desc: "Manage staff and roles" },
+          { href: "/admin/payroll",          icon: DollarSign, label: "Payroll",      desc: "Payroll and compensation" },
+          { href: "/admin/leave",            icon: CalendarOff, label: "Leave",        desc: "Leave requests and approvals" },
+          { href: "/admin/onboarding",       icon: ClipboardCheck, label: "Onboarding", desc: "New hire onboarding checklists" },
+          { href: "/admin/commissions",      icon: Award,      label: "Commissions",  desc: "Staff commission tracking" },
+          { href: "/admin/finance",          icon: DollarSign, label: "Finance",      desc: "Invoices and expenses" },
+          { href: "/admin/analytics",        icon: BarChart2,  label: "Analytics",    desc: "Business reports" },
         ]} />
       </DashboardShell>
     );

@@ -48,6 +48,9 @@ export const ADMIN_NAV_ITEMS = [
   { href: "/admin/security",            label: "Security",     roles: ["ADMIN"] },
   { href: "/admin/messages",            label: "Messages",     roles: ["ADMIN", "PRODUCTION_MANAGER", "COORDINATOR"] },
   { href: "/admin/meetings",            label: "Meetings",     roles: ["ADMIN", "PRODUCTION_MANAGER", "COORDINATOR"] },
+  { href: "/admin/leave",               label: "Leave",        roles: ["ADMIN", "HUMAN_RESOURCE"] },
+  { href: "/admin/onboarding",           label: "Onboarding",   roles: ["ADMIN", "HUMAN_RESOURCE"] },
+  { href: "/admin/commissions",          label: "Commissions",  roles: ["ADMIN", "HUMAN_RESOURCE"] },
 ] as const;
 
 type AdminUser = NonNullable<Awaited<ReturnType<typeof getCurrentUser>>>;
@@ -115,4 +118,68 @@ export function canManageEmployees(user: { role: string; staffRole: string | nul
   // HR can view/manage the list but must NOT create ADMIN accounts (enforced server-side)
   if (user.staffRole === "HUMAN_RESOURCE") return true;
   return false;
+}
+
+// ── Action-level permissions ─────────────────────────────────────────────────
+// These functions control what a user can DO within a shared page,
+// not just whether they can SEE the page.
+
+/** Full employee management: create, edit roles, suspend/activate */
+export function canEditEmployees(user: { role: string; staffRole: string | null }) {
+  return user.role === "FOUNDER" || user.role === "ADMIN";
+}
+
+/** HR can only VIEW the employee list — no create, edit roles, or suspend */
+export function canViewEmployees(user: { role: string; staffRole: string | null }) {
+  return canEditEmployees(user) || user.staffRole === "HUMAN_RESOURCE";
+}
+
+/** Full finance management: create/delete invoices, expenses, contracts */
+export function canManageFinance(user: { role: string; staffRole: string | null }) {
+  return user.role === "FOUNDER" || user.role === "ADMIN";
+}
+
+/** HR can view finance data and payroll but NOT create/delete invoices/expenses/contracts */
+export function canViewFinance(user: { role: string; staffRole: string | null }) {
+  return canManageFinance(user) || user.staffRole === "HUMAN_RESOURCE";
+}
+
+/** Create/edit/delete service packages */
+export function canManagePackages(user: { role: string; staffRole: string | null }) {
+  return user.role === "FOUNDER" || user.role === "ADMIN";
+}
+
+/** Create, release, delete galleries — admin and production manager */
+export function canManageGalleries(user: { role: string; staffRole: string | null }) {
+  if (user.role === "FOUNDER" || user.role === "ADMIN") return true;
+  if (user.staffRole === "PRODUCTION_MANAGER") return true;
+  return false;
+}
+
+/** Upload media to galleries — photographers, video editors, photo editors */
+export function canUploadToGalleries(user: { role: string; staffRole: string | null }) {
+  if (canManageGalleries(user)) return true;
+  return ["PHOTOGRAPHER", "VIDEO_EDITOR", "EDITOR"].includes(user.staffRole ?? "");
+}
+
+/** Update booking pipeline status, confirm/cancel — admin, PM, coordinator */
+export function canUpdateBookings(user: { role: string; staffRole: string | null }) {
+  if (user.role === "FOUNDER" || user.role === "ADMIN") return true;
+  return ["PRODUCTION_MANAGER", "COORDINATOR"].includes(user.staffRole ?? "");
+}
+
+/** Edit booking quotes/pricing — admin and founder only */
+export function canEditBookingPricing(user: { role: string; staffRole: string | null }) {
+  return user.role === "FOUNDER" || user.role === "ADMIN";
+}
+
+/** View bookings — everyone with bookings nav access */
+export function canViewBookings(user: { role: string; staffRole: string | null }) {
+  return canUpdateBookings(user) || ["PHOTOGRAPHER", "ASSISTANT"].includes(user.staffRole ?? "");
+}
+
+/** Create production projects — admin and production manager */
+export function canCreateProduction(user: { role: string; staffRole: string | null }) {
+  if (user.role === "FOUNDER" || user.role === "ADMIN") return true;
+  return user.staffRole === "PRODUCTION_MANAGER";
 }

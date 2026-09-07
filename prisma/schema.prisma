@@ -55,6 +55,7 @@ enum AuditAction {
   BOOKING_CREATED
   BOOKING_UPDATED
   GALLERY_VIEWED
+  GALLERY_PERMISSIONS_CHANGED
   MEDIA_UPLOADED
   MEDIA_RELEASED
   PAYMENT_RECEIVED
@@ -64,6 +65,12 @@ enum AuditAction {
   ROLE_CHANGED
   STAFF_SUSPENDED
   STAFF_ACTIVATED
+  LEAVE_REQUESTED
+  LEAVE_APPROVED
+  LEAVE_REJECTED
+  ONBOARDING_COMPLETED
+  COMMISSION_APPROVED
+  COMMISSION_PAID
 }
 
 enum ProjectStage {
@@ -115,6 +122,12 @@ model User {
   participantConvos  DirectConversation[] @relation("ParticipantConvos")
   sentDirectMessages DirectMessage[]      @relation("SentMessages")
   createdMeetings    Meeting[]            @relation("MeetingCreator")
+  // HR relations
+  leaveRequests      LeaveRequest[]       @relation("LeaveStaff")
+  leaveReviews       LeaveRequest[]       @relation("LeaveReviewer")
+  onboardingTasks    OnboardingTask[]     @relation("OnboardingStaff")
+  commissions        StaffCommission[]    @relation("CommissionStaff")
+  commissionApprovals StaffCommission[]   @relation("CommissionApprover")
 }
 
 model ClientApproval {
@@ -221,6 +234,7 @@ model Booking {
   invoices      Invoice[]
   expenses      Expense[]
   contracts     Contract[]
+  commissions   StaffCommission[] @relation("CommissionBooking")
 }
 
 model BookingReminder {
@@ -649,3 +663,93 @@ model Meeting {
   updatedAt    DateTime  @updatedAt
   createdBy    User      @relation("MeetingCreator", fields: [createdById], references: [id])
 }
+
+// ── HR: Leave / Vacation ─────────────────────────────────────────────────────
+
+enum LeaveType {
+  ANNUAL
+  SICK
+  PERSONAL
+  MATERNITY
+  PATERNITY
+  UNPAID
+  OTHER
+}
+
+enum LeaveStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  CANCELLED
+}
+
+model LeaveRequest {
+  id          String     @id @default(cuid())
+  staffId     String
+  type        LeaveType  @default(ANNUAL)
+  startDate   DateTime
+  endDate     DateTime
+  reason      String?
+  status      LeaveStatus @default(PENDING)
+  reviewedById String?
+  reviewNote  String?
+  reviewedAt  DateTime?
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  staff       User       @relation("LeaveStaff", fields: [staffId], references: [id])
+  reviewedBy  User?      @relation("LeaveReviewer", fields: [reviewedById], references: [id])
+
+  @@index([staffId])
+  @@index([status])
+}
+
+// ── HR: Onboarding Checklist ─────────────────────────────────────────────────
+
+enum OnboardingStatus {
+  PENDING
+  COMPLETED
+  SKIPPED
+}
+
+model OnboardingTask {
+  id          String            @id @default(cuid())
+  staffId     String
+  title       String
+  description String?
+  category    String            @default("general")
+  status      OnboardingStatus  @default(PENDING)
+  completedAt DateTime?
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+  staff       User              @relation("OnboardingStaff", fields: [staffId], references: [id])
+
+  @@index([staffId])
+}
+
+// ── HR: Commission Tracking ──────────────────────────────────────────────────
+
+model StaffCommission {
+  id           String   @id @default(cuid())
+  staffId      String
+  bookingId    String
+  role         String   // "Photographer", "Video Editor", "Editor", etc.
+  amountCents  Int      @default(0)
+  percent      Float?   // optional commission percentage
+  notes        String?
+  status       String   @default("PENDING") // PENDING | APPROVED | PAID
+  approvedById String?
+  approvedAt   DateTime?
+  paidAt       DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  staff        User     @relation("CommissionStaff", fields: [staffId], references: [id])
+  booking      Booking  @relation("CommissionBooking", fields: [bookingId], references: [id])
+  approvedBy   User?    @relation("CommissionApprover", fields: [approvedById], references: [id])
+
+  @@index([staffId])
+  @@index([bookingId])
+}
+
+// ── HR: Update AuditAction enum ──────────────────────────────────────────────
+// GALLERY_PERMISSIONS_CHANGED is used by security actions
+// (GALLERY_VIEWED remains for actual gallery views)

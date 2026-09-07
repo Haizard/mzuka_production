@@ -42,8 +42,12 @@ function Nav() {
     <header className="fixed inset-x-0 top-0 z-50 border-b border-white/8 bg-black/80 backdrop-blur-xl">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
         {/* Brand */}
-        <Link href="/" className="flex items-center gap-3">
-          <img src="/brand/company-logo.jpg" alt="Muzuka Gilbert" className="h-10 w-auto object-contain" />
+        <Link href="/" className="flex items-center gap-3 group">
+          <img src="/brand/mg-logo-512.png" alt="Muzuka Gilbert" className="h-11 w-11 object-contain rounded-lg transition group-hover:scale-105" />
+          <div className="hidden sm:block">
+            <p className="text-sm font-bold text-white leading-tight">MG</p>
+            <p className="text-[9px] uppercase tracking-[0.25em] text-[var(--gold)] leading-none">Muzuka Gilbert</p>
+          </div>
         </Link>
 
         {/* Desktop nav */}
@@ -630,7 +634,11 @@ function Footer() {
           {/* Brand */}
           <div className="md:col-span-1">
             <div className="flex items-center gap-3 mb-5">
-              <img src="/brand/company-logo.jpg" alt="Muzuka Gilbert" className="h-10 w-auto object-contain" />
+              <img src="/brand/mg-logo-512.png" alt="Muzuka Gilbert" className="h-12 w-12 object-contain rounded-lg" />
+              <div>
+                <p className="text-base font-bold text-white">MG</p>
+                <p className="text-[9px] uppercase tracking-[0.25em] text-[var(--gold)]">Muzuka Gilbert</p>
+              </div>
             </div>
             <p className="text-sm text-zinc-500 leading-relaxed mb-5">
               Luxury photography & videography. We don&apos;t just take pictures — we create masterpieces.

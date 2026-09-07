@@ -6,7 +6,7 @@ import {
   DollarSign, Receipt, TrendingDown, FileText,
   Bot, BarChart2, ImageIcon, ClipboardList,
   BookOpen, Users, Scale, Crown, Wrench, RotateCcw, Wallet, LogOut,
-  MessageSquare, Video,
+  MessageSquare, Video, CalendarOff, ClipboardCheck, Award,
 } from "lucide-react";
 import { requireAdmin } from "@/lib/auth";
 import { ADMIN_NAV_ITEMS } from "@/lib/admin-permissions";
@@ -46,6 +46,9 @@ const ALL_NAV: Array<{
   { ...ADMIN_NAV_ITEMS[22], icon: Shield },
   { ...ADMIN_NAV_ITEMS[23], icon: MessageSquare },
   { ...ADMIN_NAV_ITEMS[24], icon: Video },
+  { ...ADMIN_NAV_ITEMS[25], icon: CalendarOff },
+  { ...ADMIN_NAV_ITEMS[26], icon: ClipboardCheck },
+  { ...ADMIN_NAV_ITEMS[27], icon: Award },
 ];
 
 type NavItem = { href: string; label: string; icon: React.ComponentType<{ className?: string }>; roles: readonly string[] | null };
@@ -90,7 +93,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         <div className="flex flex-col gap-y-5 bg-[var(--surface)] border-r border-white/10 px-4 py-6 h-full">
           {/* Brand — company logo */}
           <div className="px-2 pb-4 border-b border-white/10 flex items-center justify-between">
-            <img src="/brand/company-logo.jpg" alt="Muzuka Gilbert" className="h-10 w-auto object-contain" />
+            <img src="/brand/mg-logo-512.png" alt="Muzuka Gilbert" className="h-10 w-10 object-contain rounded-lg" />
             <div className="flex items-center gap-1">
               <NotificationBell href="/admin/messages" />
               <ThemeToggle />
@@ -133,7 +136,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       {/* ── Mobile top bar ────────────────────────────────────── */}
       <header className="lg:hidden sticky top-0 z-30 flex items-center justify-between bg-[var(--surface)]/95 backdrop-blur-xl border-b border-white/10 px-4 py-3">
         <div className="flex items-center gap-2.5">
-          <img src="/brand/company-logo.jpg" alt="Muzuka Gilbert" className="h-8 w-auto object-contain" />
+          <img src="/brand/mg-logo-512.png" alt="Muzuka Gilbert" className="h-8 w-8 object-contain rounded-lg" />
         </div>
         <div className="flex items-center gap-2">
           <NotificationBell href="/admin/messages" />
