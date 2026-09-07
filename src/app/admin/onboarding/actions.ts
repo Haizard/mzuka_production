@@ -1,6 +1,6 @@
 "use server";
 
-import { requireAdminAccess, canEditEmployees } from "@/lib/admin-permissions";
+import { requireAdminAccess, canManageEmployees } from "@/lib/admin-permissions";
 import { prisma } from "@/lib/db";
 
 function requireOnboardingAccess() {
@@ -81,7 +81,7 @@ export async function createOnboardingTasks(
 ) {
   try {
     const admin = await requireOnboardingAccess();
-    if (!canEditEmployees(admin)) {
+    if (!canManageEmployees(admin)) {
       return { success: false, error: "You do not have permission" };
     }
 
@@ -144,7 +144,7 @@ export async function toggleTaskStatus(taskId: string, status: "COMPLETED" | "PE
 export async function deleteOnboardingTask(taskId: string) {
   try {
     const admin = await requireOnboardingAccess();
-    if (!canEditEmployees(admin)) {
+    if (!canManageEmployees(admin)) {
       return { success: false, error: "You do not have permission" };
     }
 
@@ -161,7 +161,7 @@ export async function deleteOnboardingTask(taskId: string) {
 export async function resetStaffOnboarding(staffId: string) {
   try {
     const admin = await requireOnboardingAccess();
-    if (!canEditEmployees(admin)) {
+    if (!canManageEmployees(admin)) {
       return { success: false, error: "You do not have permission" };
     }
 
