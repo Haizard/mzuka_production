@@ -1,7 +1,7 @@
 "use server";
 
 import type { InvoiceStatus, ExpenseCategory, ContractStatus } from "@prisma/client";
-import { requireAdminAccess } from "@/lib/admin-permissions";
+import { requireAdminAccess, canManageFinance } from "@/lib/admin-permissions";
 import { prisma } from "@/lib/db";
 import { nanoid } from "nanoid";
 
@@ -15,16 +15,22 @@ function requireFinanceAccess() {
   return requireAdminAccess("/admin/finance");
 }
 
-function requireInvoiceAccess() {
-  return requireAdminAccess("/admin/finance/invoices");
+async function requireInvoiceAccess() {
+  const user = await requireAdminAccess("/admin/finance/invoices");
+  if (!canManageFinance(user)) throw new Error("FORBIDDEN");
+  return user;
 }
 
-function requireExpenseAccess() {
-  return requireAdminAccess("/admin/finance/expenses");
+async function requireExpenseAccess() {
+  const user = await requireAdminAccess("/admin/finance/expenses");
+  if (!canManageFinance(user)) throw new Error("FORBIDDEN");
+  return user;
 }
 
-function requireContractAccess() {
-  return requireAdminAccess("/admin/finance/contracts");
+async function requireContractAccess() {
+  const user = await requireAdminAccess("/admin/finance/contracts");
+  if (!canManageFinance(user)) throw new Error("FORBIDDEN");
+  return user;
 }
 
 async function nextInvoiceNumber(): Promise<string> {
@@ -120,6 +126,7 @@ export async function createInvoiceAction(data: {
 }) {
   try {
     const admin = await requireInvoiceAccess();
+    if (!admin) return { success: false, error: "You do not have permission to create invoices" };
 
     const subtotal  = data.items.reduce((s, i) => s + i.quantity * i.unitCents, 0);
     const taxPct    = data.taxPercent ?? 0;
@@ -171,7 +178,9 @@ export async function createInvoiceAction(data: {
 
 export async function updateInvoiceStatusAction(invoiceId: string, status: InvoiceStatus) {
   try {
-    await requireInvoiceAccess();
+    const user = await requireAdminAccess("/admin/finance/invoices");
+    // HR can view but not update invoice status
+    if (!canManageFinance(user)) return { success: false, error: "You do not have permission to update invoices" };
 
     const invoice = await prisma.invoice.update({
       where: { id: invoiceId },
@@ -190,7 +199,7 @@ export async function updateInvoiceStatusAction(invoiceId: string, status: Invoi
 
 export async function deleteInvoiceAction(invoiceId: string) {
   try {
-    await requireInvoiceAccess();
+    await requireInvoiceAccess(); // already checks canManageFinance
     await prisma.invoice.delete({ where: { id: invoiceId } });
     return { success: true };
   } catch (error) {
@@ -257,7 +266,7 @@ export async function createExpenseAction(data: {
   receiptUrl?: string;
 }) {
   try {
-    await requireExpenseAccess();
+    await requireExpenseAccess(); // already checks canManageFinance
 
     const expense = await prisma.expense.create({
       data: {
@@ -282,7 +291,7 @@ export async function createExpenseAction(data: {
 
 export async function deleteExpenseAction(expenseId: string) {
   try {
-    await requireExpenseAccess();
+    await requireExpenseAccess(); // already checks canManageFinance
     await prisma.expense.delete({ where: { id: expenseId } });
     return { success: true };
   } catch (error) {
@@ -341,6 +350,7 @@ export async function createContractAction(data: {
 }) {
   try {
     const admin = await requireContractAccess();
+    if (!admin) return { success: false, error: "You do not have permission to create contracts" };
 
     const contract = await prisma.contract.create({
       data: {
@@ -377,7 +387,7 @@ export async function createContractAction(data: {
 
 export async function updateContractStatusAction(contractId: string, status: ContractStatus) {
   try {
-    await requireContractAccess();
+    await requireContractAccess(); // already checks canManageFinance
 
     const contract = await prisma.contract.update({
       where: { id: contractId },
@@ -396,7 +406,7 @@ export async function updateContractStatusAction(contractId: string, status: Con
 
 export async function deleteContractAction(contractId: string) {
   try {
-    await requireContractAccess();
+    await requireContractAccess(); // already checks canManageFinance
     await prisma.contract.delete({ where: { id: contractId } });
     return { success: true };
   } catch (error) {

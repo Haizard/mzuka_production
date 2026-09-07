@@ -132,6 +132,9 @@ export async function loginAction(
   if (user.approvalStatus === "DEACTIVATED") {
     redirect("/login?error=account-deactivated");
   }
+  if (user.approvalStatus === "REJECTED") {
+    redirect("/login?error=account-rejected");
+  }
   if (user.approvalStatus !== "APPROVED") {
     redirect("/pending-approval");
   }

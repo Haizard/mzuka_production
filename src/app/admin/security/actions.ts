@@ -112,7 +112,7 @@ export async function updateGalleryPermissionsAction(
   }
 ) {
   try {
-    await requireAdminAccess("/admin/security");
+    const admin = await requireAdminAccess("/admin/security");
 
     const gallery = await prisma.gallery.findUnique({ where: { id: galleryId } });
     if (!gallery) return { success: false, error: "Gallery not found" };
@@ -141,10 +141,11 @@ export async function updateGalleryPermissionsAction(
 
     await prisma.auditLog.create({
       data: {
-        action: "GALLERY_VIEWED", // closest available action for permission change
+        actorId: admin.id,
+        action: "GALLERY_PERMISSIONS_CHANGED",
         entity: "Gallery",
         entityId: galleryId,
-        metadata: { permissionsUpdated: permissions },
+        metadata: { permissionsUpdated: permissions, changedBy: admin.email },
       },
     });
 
@@ -157,7 +158,7 @@ export async function updateGalleryPermissionsAction(
 
 export async function revokeGalleryAccessAction(galleryId: string) {
   try {
-    await requireAdminAccess("/admin/security");
+    const admin = await requireAdminAccess("/admin/security");
 
     const updated = await prisma.gallery.update({
       where: { id: galleryId },
@@ -170,10 +171,11 @@ export async function revokeGalleryAccessAction(galleryId: string) {
 
     await prisma.auditLog.create({
       data: {
+        actorId: admin.id,
         action: "ACCESS_REVOKED",
         entity: "Gallery",
         entityId: galleryId,
-        metadata: { revokedAt: new Date().toISOString() },
+        metadata: { revokedAt: new Date().toISOString(), revokedBy: admin.email },
       },
     });
 

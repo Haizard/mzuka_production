@@ -1,12 +1,14 @@
 "use server";
 
 import type { BookingStatus, PaymentStatus, BookingStatusV2 } from "@prisma/client";
-import { requireAdminAccess } from "@/lib/admin-permissions";
+import { requireAdminAccess, canUpdateBookings, canEditBookingPricing } from "@/lib/admin-permissions";
 import { prisma } from "@/lib/db";
 import { sendBookingConfirmedMessage } from "@/lib/messages";
 
-function requireBookingsAccess() {
-  return requireAdminAccess("/admin/bookings");
+async function requireBookingsUpdate() {
+  const user = await requireAdminAccess("/admin/bookings");
+  if (!canUpdateBookings(user)) throw new Error("FORBIDDEN");
+  return user;
 }
 
 export interface GetAllBookingsInput {
@@ -18,7 +20,7 @@ export interface GetAllBookingsInput {
 
 export async function getAllBookings(input: GetAllBookingsInput = {}) {
   try {
-    await requireBookingsAccess();
+    await requireAdminAccess("/admin/bookings");
 
     const where: {
       status?: BookingStatus;
@@ -90,7 +92,7 @@ const BOOKING_STATUS_V2_VALUES = [
 
 export async function updateBookingPipelineAction(bookingId: string, statusV2: string) {
   try {
-    const admin = await requireBookingsAccess();
+    const admin = await requireBookingsUpdate();
 
     if (!BOOKING_STATUS_V2_VALUES.includes(statusV2 as BookingStatusV2)) {
       return { success: false, error: "Invalid pipeline status" };
@@ -120,7 +122,8 @@ export async function updateBookingQuoteAction(bookingId: string, data: {
   quoteTotalCents?: number; depositPercent?: number; internalNotes?: string;
 }) {
   try {
-    await requireBookingsAccess();
+    const user = await requireAdminAccess("/admin/bookings");
+    if (!canEditBookingPricing(user)) return { success: false, error: "You do not have permission to edit booking pricing" };
     const updated = await prisma.booking.update({
       where: { id: bookingId },
       data: {
@@ -138,7 +141,7 @@ export async function updateBookingQuoteAction(bookingId: string, data: {
 
 export async function updateBookingStatusAction(bookingId: string, newStatus: string) {
   try {
-    const admin = await requireBookingsAccess();
+    const admin = await requireBookingsUpdate();
 
     if (!isBookingStatus(newStatus)) {
       return {
@@ -202,7 +205,7 @@ export async function updateBookingStatusAction(bookingId: string, newStatus: st
 
 export async function getBookingStats() {
   try {
-    await requireBookingsAccess();
+    await requireAdminAccess("/admin/bookings");
 
     const [total, requested, confirmed, completed, paid, unpaid] = await Promise.all([
       prisma.booking.count(),

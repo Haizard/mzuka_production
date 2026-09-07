@@ -1,6 +1,6 @@
 "use server";
 
-import { canManageEmployees, requireAdminAccess, isFounderOnlyRole } from "@/lib/admin-permissions";
+import { canManageEmployees, canEditEmployees, requireAdminAccess, isFounderOnlyRole } from "@/lib/admin-permissions";
 import { prisma } from "@/lib/db";
 import { hashPassword } from "@/lib/password";
 import { nanoid } from "nanoid";
@@ -19,7 +19,7 @@ export async function createStaffMemberAction(data: {
 }) {
   try {
     const admin = await requireAdminAccess("/admin/employees");
-    if (!canManageEmployees(admin)) return { success: false, error: "Forbidden" };
+    if (!canEditEmployees(admin)) return { success: false, error: "You do not have permission to create staff members" };
 
     // SECURITY: Only the FOUNDER can create ADMIN-staff accounts.
     // HR and other managers cannot elevate themselves or others to admin.
@@ -87,7 +87,7 @@ export async function createStaffMemberAction(data: {
 export async function updateStaffRoleAction(staffId: string, staffRole: string) {
   try {
     const admin = await requireAdminAccess("/admin/employees");
-    if (!canManageEmployees(admin)) return { success: false, error: "Forbidden" };
+    if (!canEditEmployees(admin)) return { success: false, error: "You do not have permission to edit roles" };
 
     // SECURITY: Prevent self-elevation
     if (staffId === admin.id) {
@@ -140,7 +140,7 @@ export async function updateStaffRoleAction(staffId: string, staffRole: string) 
 export async function suspendStaffAction(staffId: string) {
   try {
     const admin = await requireAdminAccess("/admin/employees");
-    if (!canManageEmployees(admin)) return { success: false, error: "Forbidden" };
+    if (!canEditEmployees(admin)) return { success: false, error: "You do not have permission to suspend staff" };
     if (staffId === admin.id) return { success: false, error: "You cannot suspend your own account" };
 
     const staff = await prisma.user.findUnique({ where: { id: staffId } });
@@ -172,7 +172,7 @@ export async function suspendStaffAction(staffId: string) {
 export async function activateStaffAction(staffId: string) {
   try {
     const admin = await requireAdminAccess("/admin/employees");
-    if (!canManageEmployees(admin)) return { success: false, error: "Forbidden" };
+    if (!canEditEmployees(admin)) return { success: false, error: "You do not have permission to activate staff" };
 
     const staff = await prisma.user.findUnique({ where: { id: staffId } });
     if (!staff) return { success: false, error: "Staff member not found" };
