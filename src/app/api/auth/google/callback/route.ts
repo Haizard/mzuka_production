@@ -118,31 +118,11 @@ export async function GET(req: NextRequest) {
     // Create session
     await createUserSession(user.id);
 
-    // Redirect based on role and approval (mirrors loginAction logic)
-    if (user.approvalStatus === "DEACTIVATED") {
-      return NextResponse.redirect(`${origin}/login?error=account-deactivated`);
-    }
-    if (user.approvalStatus === "REJECTED") {
-      return NextResponse.redirect(`${origin}/login?error=account-rejected`);
-    }
-    if (user.approvalStatus !== "APPROVED") {
-      return NextResponse.redirect(`${origin}/pending-approval`);
-    }
-    if (["FOUNDER", "ADMIN"].includes(user.role)) {
-      return NextResponse.redirect(`${origin}/admin`);
-    }
-    if (user.role === "STAFF") {
-      const fullUser = await prisma.user.findUnique({
-        where: { id: user.id },
-        select: { staffRole: true },
-      });
-      const adminStaffRoles = ["ADMIN", "PRODUCTION_MANAGER", "COORDINATOR", "HUMAN_RESOURCE"];
-      if (fullUser?.staffRole && adminStaffRoles.includes(fullUser.staffRole)) {
-        return NextResponse.redirect(`${origin}/admin`);
-      }
-      return NextResponse.redirect(`${origin}/staff`);
-    }
-    return NextResponse.redirect(`${origin}/client`);
+    // ALWAYS redirect to /login — the login page server component reads
+    // the session cookie and performs the role-based redirect from there.
+    // This avoids the redirect loop where direct /admin redirect can't
+    // read the cookie set in the same redirect chain.
+    return NextResponse.redirect(`${origin}/login`);
   } catch (err) {
     console.error("[google-auth] unexpected error:", err);
     return NextResponse.redirect(`${origin}/login?error=google_failed`);
